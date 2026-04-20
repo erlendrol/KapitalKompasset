@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KapitalKompasset</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:#1a1a2e; --ink-soft:#3d3d5c; --ink-muted:#7a7a9a;
+  --cream:#f8f6f1; --cream-dark:#ede9e0;
+  --gold:#c9a84c; --gold-light:#f5ead0;
+  --teal:#2a7f7f; --teal-light:#d4eeee;
+  --danger:#b84040; --danger-light:#fdf0f0;
+  --warn:#c97a2a; --warn-light:#fef4e8;
+  --radius:12px; --shadow:0 4px 24px rgba(26,26,46,0.08); --shadow-lg:0 8px 40px rgba(26,26,46,0.14);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);height:100vh;overflow:hidden;font-size:15px;line-height:1.6;}
+
+/* ── HEADER ── */
+header{background:var(--ink);color:white;padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:100;position:relative;}
+.logo{font-family:'DM Serif Display',serif;font-size:1.3rem;}
+.logo span{color:var(--gold);}
+.header-nav{display:flex;gap:6px;}
+.nav-btn{border:none;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);padding:5px 14px;border-radius:50px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:500;transition:all 0.2s;}
+.nav-btn:hover{background:rgba(255,255,255,0.2);color:white;}
+.nav-btn.active{background:white;color:var(--ink);}
+
+/* ══════════════════════════════════════
+   SCREEN SYSTEM
+══════════════════════════════════════ */
+.screen{position:absolute;top:56px;left:0;right:0;bottom:0;transition:opacity 0.3s,transform 0.3s;opacity:0;pointer-events:none;transform:translateY(8px);}
+.screen.active{opacity:1;pointer-events:all;transform:translateY(0);}
+
+/* ══════════════════════════════════════
+   SCREEN 1: LANDING / DECISION MODE
+══════════════════════════════════════ */
+#screenLanding{background:var(--cream);display:flex;flex-direction:column;}
+.landing-chat{flex:1;overflow-y:auto;padding:2rem 0 3rem;display:flex;flex-direction:column;align-items:center;}
+.landing-inner{width:100%;max-width:680px;padding:0 1.5rem;display:flex;flex-direction:column;gap:1rem;}
+.landing-hero{text-align:center;padding:2rem 0 1.5rem;}
+.landing-hero h1{font-family:'DM Serif Display',serif;font-size:2rem;margin-bottom:0.5rem;line-height:1.2;}
+.landing-hero p{color:var(--ink-muted);font-size:1rem;}
+
+/* question sentence highlight */
+.ai-question{display:inline;color:var(--teal);font-weight:500;}
+
+.bubble{padding:14px 18px;border-radius:18px;font-size:0.92rem;line-height:1.65;max-width:100%;animation:fadeUp 0.3s ease;}
+.bubble.ai{background:white;border:1px solid var(--cream-dark);border-bottom-left-radius:4px;box-shadow:var(--shadow);align-self:flex-start;}
+.bubble.user{background:var(--ink);color:white;border-bottom-right-radius:4px;align-self:flex-end;max-width:75%;}
+.bubble.ai strong{color:var(--teal);}
+.bubble.ai .rec-box{background:var(--teal-light);border:1px solid #a0d0d0;border-radius:10px;padding:12px 14px;margin-top:10px;}
+.bubble.ai .rec-box .rec-title{font-weight:600;color:var(--teal);font-size:0.88rem;margin-bottom:4px;}
+.bubble.ai .alloc-line{font-size:0.85rem;color:var(--ink-soft);margin:4px 0;}
+.bubble.ai ul{margin:6px 0 0 16px;}
+.bubble.ai ul li{font-size:0.85rem;color:var(--ink-soft);margin-bottom:3px;}
+.bubble.ai .flip-note{font-size:0.8rem;color:var(--ink-muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--cream-dark);}
+.bubble.ai .next-step{font-size:0.82rem;color:var(--ink-soft);background:var(--cream);border-radius:7px;padding:8px 10px;margin-top:8px;line-height:1.5;}
+.bubble.ai .next-step strong{color:var(--ink);}
+.bubble.ai .deeper-btn{display:inline-block;margin-top:10px;background:var(--ink);color:white;border:none;padding:8px 18px;border-radius:50px;font-family:'DM Sans',sans-serif;font-size:0.82rem;cursor:pointer;font-weight:500;transition:background 0.15s;}
+.bubble.ai .deeper-btn:hover{background:var(--teal);}
+
+.quick-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding:0.25rem 0;}
+.qbtn{background:white;border:1.5px solid var(--cream-dark);border-radius:50px;padding:8px 18px;font-size:0.85rem;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--ink-soft);font-weight:500;transition:all 0.15s;box-shadow:var(--shadow);}
+.qbtn:hover{background:var(--teal-light);border-color:var(--teal);color:var(--teal);}
+.qbtn.selected{background:var(--ink);color:white;border-color:var(--ink);}
+
+.landing-input-area{display:flex;gap:10px;width:100%;max-width:680px;padding:0 1.5rem;margin:0 auto;}
+.landing-input{flex:1;border:1.5px solid var(--cream-dark);border-radius:50px;padding:10px 18px;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;transition:border-color 0.15s;background:white;}
+.landing-input:focus{border-color:var(--teal);}
+.send-btn{background:var(--ink);color:white;border:none;border-radius:50px;padding:10px 22px;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:500;cursor:pointer;transition:background 0.15s;white-space:nowrap;}
+.send-btn:hover{background:var(--teal);}
+.send-btn:disabled{background:var(--ink-muted);cursor:not-allowed;}
+
+/* ══════════════════════════════════════
+   SCREEN 2: ADVISORY TOOL
+══════════════════════════════════════ */
+#screenAdvisory{display:flex;flex-direction:column;}
+.advisory-body{flex:1;display:flex;overflow:hidden;position:relative;}
+
+/* DRAWER SIDEBAR */
+.drawer-toggle{position:absolute;left:0;top:50%;transform:translateY(-50%);z-index:50;background:var(--ink);color:white;border:none;border-radius:0 8px 8px 0;padding:10px 8px;cursor:pointer;box-shadow:2px 0 10px rgba(0,0,0,0.15);transition:left 0.3s,background 0.2s;display:flex;flex-direction:column;align-items:center;gap:5px;writing-mode:vertical-rl;}
+.drawer-toggle:hover{background:var(--teal);}
+.drawer-toggle .toggle-label{font-family:'DM Sans',sans-serif;font-size:0.65rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:rgba(255,255,255,0.85);}
+.drawer-toggle svg{display:block;transition:transform 0.3s;flex-shrink:0;}
+.drawer{width:320px;min-width:320px;background:white;border-right:1px solid var(--cream-dark);overflow-y:auto;padding:1.5rem 1.25rem;flex-shrink:0;margin-left:-320px;transition:margin-left 0.3s;position:relative;z-index:40;}
+.drawer.open{margin-left:0;}
+.advisory-body.drawer-open .drawer-toggle{left:320px;}
+.advisory-body.drawer-open .drawer-toggle svg{transform:rotate(180deg);}
+
+/* ADVISORY MAIN AREA — split: results left, chat right */
+.advisory-main{flex:1;display:flex;overflow:hidden;}
+.advisory-results{flex:1;overflow-y:auto;padding:1.75rem 2rem;}
+.advisory-chat-panel{width:340px;min-width:340px;border-left:1px solid var(--cream-dark);display:flex;flex-direction:column;background:white;}
+
+/* ── DRAWER FORM STYLES ── */
+.section-title{font-family:'DM Serif Display',serif;font-size:0.9rem;color:var(--ink-soft);margin-bottom:0.9rem;padding-bottom:0.4rem;border-bottom:1px solid var(--cream-dark);display:flex;align-items:center;gap:8px;}
+.section-title .num{width:19px;height:19px;background:var(--gold);color:white;border-radius:50%;font-size:0.68rem;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;font-weight:600;flex-shrink:0;}
+.form-group{margin-bottom:1.25rem;}
+label.form-label{display:block;font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-muted);margin-bottom:0.4rem;}
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:var(--cream-dark);border-radius:4px;outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;background:var(--ink);border-radius:50%;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.2);}
+.slider-labels{display:flex;justify-content:space-between;font-size:0.7rem;color:var(--ink-muted);margin-top:3px;}
+.slider-value{font-size:1rem;font-weight:600;color:var(--teal);margin-bottom:5px;display:block;}
+.pill-group{display:flex;flex-wrap:wrap;gap:5px;}
+.pill{border:1.5px solid var(--cream-dark);background:white;color:var(--ink-soft);padding:5px 11px;border-radius:50px;font-size:0.78rem;cursor:pointer;transition:all 0.15s;font-family:'DM Sans',sans-serif;font-weight:500;}
+.pill:hover{border-color:var(--ink-muted);}
+.pill.active{background:var(--ink);color:white;border-color:var(--ink);}
+.pill.active.teal{background:var(--teal);border-color:var(--teal);}
+.num-wrap{position:relative;}
+.num-wrap .pfx{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--ink-muted);font-size:0.82rem;}
+input[type=number]{width:100%;border:1.5px solid var(--cream-dark);border-radius:var(--radius);padding:8px 10px 8px 32px;font-family:'DM Sans',sans-serif;font-size:0.9rem;color:var(--ink);outline:none;background:white;transition:border-color 0.15s;}
+input[type=number]:focus{border-color:var(--teal);}
+.calc-btn{width:100%;background:var(--ink);color:white;border:none;padding:12px;border-radius:var(--radius);font-family:'DM Serif Display',serif;font-size:0.95rem;cursor:pointer;transition:all 0.2s;margin-top:0.5rem;}
+.calc-btn:hover{background:var(--teal);transform:translateY(-1px);}
+
+/* suitability info box */
+.info-box{background:var(--cream);border-radius:10px;padding:12px 14px;font-size:0.8rem;color:var(--ink-soft);margin-top:0.75rem;line-height:1.6;}
+.info-box ul{margin:6px 0 0 14px;}
+.info-box ul li{margin-bottom:4px;}
+.lesMer{font-size:0.75rem;color:var(--teal);cursor:pointer;margin-top:6px;display:inline-block;font-weight:500;}
+.lesMer:hover{text-decoration:underline;}
+
+/* capacity bar */
+.cap-bar{display:flex;gap:3px;margin-top:6px;}
+.cap-seg{height:5px;flex:1;border-radius:3px;background:var(--cream-dark);transition:background 0.3s;}
+.cap-seg.active{background:var(--teal);}
+.cap-seg.warn{background:var(--warn)!important;}
+.cap-label{font-size:0.75rem;color:var(--ink-soft);margin-top:3px;font-weight:500;}
+
+/* MC questions */
+.mc-q{background:var(--cream);border-radius:9px;padding:10px 12px;margin-bottom:8px;}
+.mc-q p{font-weight:500;margin-bottom:6px;font-size:0.82rem;}
+.mc-opt{border:1.5px solid var(--cream-dark);background:white;border-radius:7px;padding:6px 10px;margin-bottom:4px;cursor:pointer;font-size:0.78rem;transition:all 0.15s;}
+.mc-opt:hover,.mc-opt.selected{border-color:var(--teal);background:var(--teal-light);}
+.mc-opt.selected{font-weight:500;}
+.disclaimer{font-size:0.68rem;color:var(--ink-muted);background:var(--cream-dark);border-radius:7px;padding:8px 11px;margin-top:1rem;line-height:1.5;}
+
+/* ── RESULTS AREA ── */
+.alert{border-radius:var(--radius);padding:11px 14px;font-size:0.83rem;line-height:1.55;margin-bottom:1.25rem;display:flex;gap:9px;align-items:flex-start;}
+.alert.warn{background:var(--warn-light);border:1px solid #e8c08a;color:#7a4a0a;}
+.alert.info{background:var(--teal-light);border:1px solid #a0d0d0;color:#1a5555;}
+.alert-icon{font-size:1rem;flex-shrink:0;margin-top:1px;}
+
+.result-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:1rem;}
+.profile-badge{display:inline-flex;align-items:center;gap:10px;background:white;border:2px solid var(--gold);border-radius:50px;padding:7px 18px 7px 10px;box-shadow:var(--shadow);}
+.profile-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.profile-name{font-family:'DM Serif Display',serif;font-size:1.15rem;}
+.profile-sub{font-size:0.72rem;color:var(--ink-muted);}
+.alloc-strip{display:flex;border-radius:8px;overflow:hidden;height:7px;width:180px;}
+.info-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:0.9rem;margin-bottom:1.25rem;}
+.info-card{background:white;border-radius:var(--radius);padding:1rem;box-shadow:var(--shadow);}
+.info-card .label{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-muted);margin-bottom:3px;}
+.info-card .value{font-size:1.35rem;font-weight:600;color:var(--ink);}
+.info-card .value.teal{color:var(--teal);}
+.info-card .value.gold{color:var(--gold);}
+.info-card .sub{font-size:0.7rem;color:var(--ink-muted);margin-top:1px;}
+.chart-card{background:white;border-radius:var(--radius);padding:1.25rem;box-shadow:var(--shadow);margin-bottom:1.25rem;}
+.chart-title{font-family:'DM Serif Display',serif;font-size:0.95rem;margin-bottom:0.9rem;}
+.chart-wrap{position:relative;height:300px;}
+.result-disclaimer{font-size:0.7rem;color:var(--ink-muted);background:var(--cream-dark);border-radius:7px;padding:9px 12px;line-height:1.5;}
+
+/* empty state */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;color:var(--ink-muted);padding:2rem;}
+.empty-state svg{opacity:0.25;margin-bottom:1rem;}
+
+/* ── ADVISORY CHAT PANEL ── */
+.adv-chat-history{flex:1;overflow-y:auto;padding:1.25rem 1rem;display:flex;flex-direction:column;gap:0.9rem;}
+.adv-chat-history .bubble{max-width:90%;}
+.adv-chat-history .bubble.ai{font-size:0.85rem;}
+.adv-chat-history .bubble.user{font-size:0.85rem;}
+.adv-quick-row{padding:0.4rem 1rem 0;display:flex;flex-wrap:wrap;gap:5px;}
+.adv-qbtn{background:white;border:1.5px solid var(--cream-dark);border-radius:50px;padding:5px 11px;font-size:0.76rem;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--ink-soft);font-weight:500;transition:all 0.15s;}
+.adv-qbtn:hover{background:var(--teal-light);border-color:var(--teal);color:var(--teal);}
+.adv-input-area{padding:0.75rem 1rem;background:white;border-top:1px solid var(--cream-dark);display:flex;gap:8px;}
+.adv-input{flex:1;border:1.5px solid var(--cream-dark);border-radius:50px;padding:8px 14px;font-family:'DM Sans',sans-serif;font-size:0.85rem;outline:none;transition:border-color 0.15s;}
+.adv-input:focus{border-color:var(--teal);}
+.adv-send{background:var(--ink);color:white;border:none;border-radius:50px;padding:8px 16px;font-family:'DM Sans',sans-serif;font-size:0.8rem;font-weight:500;cursor:pointer;transition:background 0.15s;white-space:nowrap;}
+.adv-send:hover{background:var(--teal);}
+.adv-send:disabled{background:var(--ink-muted);cursor:not-allowed;}
+.adv-chat-header{padding:0.9rem 1rem;border-bottom:1px solid var(--cream-dark);display:flex;align-items:center;justify-content:space-between;}
+.adv-chat-header span{font-weight:600;font-size:0.85rem;}
+.adv-chat-header .ai-dot{width:7px;height:7px;background:#4caf50;border-radius:50%;display:inline-block;margin-right:5px;}
+
+/* fund disclaimer tag */
+.fund-disclaimer{display:block;margin-top:10px;font-size:0.78rem;color:#7a3a0a;background:#fff3e0;border:1.5px solid #e8a060;border-radius:8px;padding:9px 12px;line-height:1.55;}
+.fund-disclaimer strong{color:#7a3a0a;}
+.fund-disclaimer em{font-style:italic;}
+.typing-dots{display:flex;gap:4px;align-items:center;padding:3px 0;}
+.typing-dots span{width:5px;height:5px;background:var(--ink-muted);border-radius:50%;animation:blink 1.2s infinite;}
+.typing-dots span:nth-child(2){animation-delay:0.2s;}
+.typing-dots span:nth-child(3){animation-delay:0.4s;}
+@keyframes blink{0%,80%,100%{opacity:0.2}40%{opacity:1}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── LANDING GROWTH CHART ── */
+.landing-chart-card{background:white;border:1px solid var(--cream-dark);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow);margin-top:4px;animation:fadeUp 0.35s ease;}
+.landing-chart-card .chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;}
+.landing-chart-card .chart-headline{font-family:'DM Serif Display',serif;font-size:0.95rem;color:var(--ink);}
+.landing-chart-card .chart-legend{display:flex;gap:12px;flex-wrap:wrap;}
+.landing-chart-card .legend-item{display:flex;align-items:center;gap:4px;font-size:0.7rem;color:var(--ink-muted);}
+.landing-chart-card .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.landing-chart-card .chart-canvas-wrap{position:relative;height:200px;width:100%;}
+.landing-chart-card canvas{display:block;}
+.landing-chart-card .chart-note{font-size:0.68rem;color:var(--ink-muted);margin-top:6px;text-align:center;line-height:1.4;}
+
+.hidden{display:none!important;}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-thumb{background:var(--cream-dark);border-radius:4px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Kapital<span>Kompasset</span></div>
+  <div class="header-nav">
+    <button class="nav-btn active" id="navDecision" onclick="goScreen('landing')">Hva skal jeg gjøre?</button>
+    <button class="nav-btn" id="navAdvisory" onclick="goScreen('advisory')">Dybdeanalyse</button>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════
+     SCREEN 1: DECISION / LANDING
+══════════════════════════════════════ -->
+<div class="screen active" id="screenLanding">
+  <div class="landing-chat" id="landingChat">
+    <div class="landing-inner">
+      <div class="landing-hero">
+        <h1>Hva skal jeg gjøre<br>med pengene mine?</h1>
+        <p>Få et klart svar på under ett minutt — ingen jargon, ingen skjemaer.</p>
+      </div>
+      <div id="landingMsgs"></div>
+      <div id="landingQuick" class="quick-row"></div>
+      <div class="landing-input-area">
+        <input type="text" class="landing-input" id="landingInput" placeholder="Eller skriv her…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();landingSend();}">
+        <button class="send-btn" id="landingSendBtn" onclick="landingSend()">Send →</button>
+      </div>
+      <div id="landingChartWrap" class="hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SCREEN 2: ADVISORY TOOL
+══════════════════════════════════════ -->
+<div class="screen" id="screenAdvisory">
+  <div class="advisory-body" id="advisoryBody">
+
+    <!-- DRAWER TOGGLE -->
+    <button class="drawer-toggle" id="drawerToggle" onclick="toggleDrawer()" title="Manuell inndata">
+      <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+        <polyline points="9,2 4,7 9,12"/>
+      </svg>
+      <span class="toggle-label">Manuell</span>
+    </button>
+
+    <!-- DRAWER SIDEBAR -->
+    <div class="drawer" id="drawer">
+      <!-- SUITABILITY -->
+      <div class="form-group">
+        <div class="section-title"><span class="num">1</span>Egnethetsvurdering</div>
+        <label class="form-label">Kunnskap og erfaring</label>
+        <div class="pill-group" id="suitGroup">
+          <button class="pill" data-val="experience" onclick="selectPill(this,'suitGroup');updateSuit()">Erfaring med fond/verdipapirer</button>
+          <button class="pill" data-val="education" onclick="selectPill(this,'suitGroup');updateSuit()">Relevant utdanning</button>
+          <button class="pill active teal" data-val="questions" onclick="selectPill(this,'suitGroup');updateSuit()">Usikker — svar på spørsmål</button>
+          <button class="pill" data-val="none" onclick="selectPill(this,'suitGroup');updateSuit()">Ingen erfaring</button>
+        </div>
+
+        <!-- Info for experienced users: collapsible -->
+        <div id="suitInfoExpert" class="hidden">
+          <span class="lesMer" onclick="toggleLesMer()">Les mer om hva profilene innebærer ▾</span>
+          <div id="lesMerContent" class="info-box hidden">
+            <ul>
+              <li><strong>Verdipapirer</strong> er finansielle instrumenter som aksjer og obligasjoner. En aksje gir deg eierandel i et selskap. En obligasjon er et lån du gir til et selskap eller en stat.</li>
+              <li><strong>Risiko</strong> betyr at verdien på investeringen kan gå opp og ned. Høyere potensiell avkastning innebærer som regel høyere risiko for tap.</li>
+              <li><strong>Kostnader</strong> spiser direkte av avkastningen din. 1% i kostnad kan over 20 år redusere sluttbeløpet med 15–20%.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Info for inexperienced: always shown -->
+        <div id="suitInfoNone" class="info-box hidden">
+          <strong style="color:var(--teal);font-size:0.82rem;">Godt å vite før du starter:</strong>
+          <ul>
+            <li><strong>Verdipapirer</strong> er aksjer og obligasjoner. En aksje gir deg eierandel i et selskap og kan gi høy avkastning — men også store tap. En obligasjon er tryggere, men gir lavere avkastning.</li>
+            <li><strong>Risiko</strong> betyr svingninger i verdi. Jo mer risiko du tar, jo større kan gevinsten bli — men du kan også tape mer. Lang tidshorisont reduserer risikoen betraktelig.</li>
+            <li><strong>Kostnader</strong> trekkes automatisk fra avkastningen din. 0,5% i kostnad kan høres lite ut, men over 20 år kan det utgjøre hundretusener i tapt verdi.</li>
+          </ul>
+        </div>
+
+        <!-- MC questions -->
+        <div id="mcBlock" style="margin-top:0.75rem;">
+          <div style="font-size:0.75rem;color:var(--ink-muted);margin-bottom:0.6rem;">Svar på spørsmålene for å fastsette din risikovilje:</div>
+          <div class="mc-q">
+            <p>1. Hvis porteføljen falt 20% på tre måneder, hva ville du gjøre?</p>
+            <div class="mc-opt" data-q="1" data-score="1" onclick="selectMC(this)">Selge alt umiddelbart</div>
+            <div class="mc-opt" data-q="1" data-score="2" onclick="selectMC(this)">Selge noe for å redusere risiko</div>
+            <div class="mc-opt" data-q="1" data-score="3" onclick="selectMC(this)">Beholde og vente på bedring</div>
+            <div class="mc-opt" data-q="1" data-score="4" onclick="selectMC(this)">Kjøpe mer mens prisene er lave</div>
+          </div>
+          <div class="mc-q">
+            <p>2. Hva er ditt primære mål med investeringen?</p>
+            <div class="mc-opt" data-q="2" data-score="1" onclick="selectMC(this)">Bevare verdiene</div>
+            <div class="mc-opt" data-q="2" data-score="2" onclick="selectMC(this)">Moderat vekst, begrenset risiko</div>
+            <div class="mc-opt" data-q="2" data-score="3" onclick="selectMC(this)">God vekst, tåler svingninger</div>
+            <div class="mc-opt" data-q="2" data-score="4" onclick="selectMC(this)">Maksimal langsiktig avkastning</div>
+          </div>
+          <div class="mc-q">
+            <p>3. Hva er din investeringshorisont?</p>
+            <div class="mc-opt" data-q="3" data-score="1" onclick="selectMC(this)">Under 3 år</div>
+            <div class="mc-opt" data-q="3" data-score="2" onclick="selectMC(this)">3–7 år</div>
+            <div class="mc-opt" data-q="3" data-score="3" onclick="selectMC(this)">7–15 år</div>
+            <div class="mc-opt" data-q="3" data-score="4" onclick="selectMC(this)">Over 15 år</div>
+          </div>
+          <div class="mc-q">
+            <p>4. Hvilken setning passer deg best?</p>
+            <div class="mc-opt" data-q="4" data-score="1" onclick="selectMC(this)">Jeg sover dårlig hvis investeringene svinger</div>
+            <div class="mc-opt" data-q="4" data-score="2" onclick="selectMC(this)">Jeg tåler litt uro, men bekymrer meg ved store fall</div>
+            <div class="mc-opt" data-q="4" data-score="3" onclick="selectMC(this)">Komfortabel med svingninger på vei mot målet</div>
+            <div class="mc-opt" data-q="4" data-score="4" onclick="selectMC(this)">Svingninger plager meg ikke — jeg tenker langsiktig</div>
+          </div>
+          <div id="mcResult" style="font-size:0.77rem;color:var(--teal);font-weight:500;margin-top:2px;"></div>
+        </div>
+      </div>
+
+      <!-- FINANSIELL SITUASJON — now section 2 -->
+      <div class="form-group">
+        <div class="section-title"><span class="num">2</span>Finansiell situasjon</div>
+        <div class="form-group">
+          <label class="form-label">Årslønn etter skatt</label>
+          <div class="num-wrap"><span class="pfx">kr</span><input type="number" id="income" value="600000" min="0" step="10000"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Årlige utgifter</label>
+          <div class="num-wrap"><span class="pfx">kr</span><input type="number" id="expenses" value="350000" min="0" step="10000"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Investerbare eiendeler</label>
+          <div class="num-wrap"><span class="pfx">kr</span><input type="number" id="assets" value="0" min="0" step="10000"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Gjeld</label>
+          <div class="num-wrap"><span class="pfx">kr</span><input type="number" id="debt" value="0" min="0" step="10000"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Buffer (antall måneder utgifter)</label>
+          <div class="num-wrap"><span class="pfx">mnd</span><input type="number" id="bufferMonths" value="3" min="0" max="24" step="0.5" style="padding-left:44px;"></div>
+        </div>
+        <label class="form-label">Evne til å tåle svingninger</label>
+        <div class="cap-bar" id="capBar"><div class="cap-seg"></div><div class="cap-seg"></div><div class="cap-seg"></div><div class="cap-seg"></div><div class="cap-seg"></div></div>
+        <div class="cap-label" id="capLabel">Beregnes…</div>
+      </div>
+
+      <!-- RISIKOVILJE — section 3 -->
+      <div class="form-group">
+        <div class="section-title"><span class="num">3</span>Risikovilje</div>
+        <div id="riskFromMCNote" class="hidden" style="font-size:0.75rem;color:var(--teal);margin-bottom:0.5rem;font-weight:500;"></div>
+        <div class="pill-group" id="riskGroup">
+          <button class="pill" data-val="Ingen" onclick="selectPill(this,'riskGroup');selectedRisk='Ingen';updateCap()">Ingen</button>
+          <button class="pill" data-val="Meget lav" onclick="selectPill(this,'riskGroup');selectedRisk='Meget lav';updateCap()">Meget lav</button>
+          <button class="pill" data-val="Lav" onclick="selectPill(this,'riskGroup');selectedRisk='Lav';updateCap()">Lav</button>
+          <button class="pill" data-val="Middels" onclick="selectPill(this,'riskGroup');selectedRisk='Middels';updateCap()">Middels</button>
+          <button class="pill active teal" data-val="Offensiv" onclick="selectPill(this,'riskGroup');selectedRisk='Offensiv';updateCap()">Offensiv</button>
+          <button class="pill" data-val="Høy" onclick="selectPill(this,'riskGroup');selectedRisk='Høy';updateCap()">Høy</button>
+        </div>
+        <div style="font-size:0.7rem;color:var(--ink-muted);margin-top:5px;">«Offensiv» = høy aksjeandel · «Høy» = maksimal aksjeandel</div>
+      </div>
+
+      <!-- INVESTERING — now section 4 -->
+      <div class="form-group">
+        <div class="section-title"><span class="num">4</span>Investering</div>
+        <div class="form-group">
+          <label class="form-label">Startkapital (NOK)</label>
+          <div class="num-wrap"><span class="pfx">kr</span><input type="number" id="startCapital" value="0" min="0" step="10000"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Månedlig sparing (NOK)</label>
+          <div class="num-wrap"><span class="pfx">kr</span><input type="number" id="monthlySavings" value="5000" min="0" step="500"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tidshorisont: <span class="slider-value" id="horizonVal">15 år</span></label>
+          <input type="range" id="horizon" min="1" max="40" value="15" oninput="updateSlider()">
+          <div class="slider-labels"><span>1 år</span><span>40 år</span></div>
+        </div>
+      </div>
+
+      <!-- KOSTNADER — section 5 -->
+      <div class="form-group">
+        <div class="section-title"><span class="num">5</span>Kostnader</div>
+        <div class="form-group">
+          <label class="form-label">Aksjer (%)</label>
+          <div class="num-wrap"><span class="pfx">%</span><input type="number" id="costStocks" value="0.70" min="0" max="3" step="0.01"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Obligasjoner (%)</label>
+          <div class="num-wrap"><span class="pfx">%</span><input type="number" id="costBonds" value="0.30" min="0" max="3" step="0.01"></div>
+        </div>
+      </div>
+
+      <button class="calc-btn" onclick="calculate()">Beregn anbefaling</button>
+      <div class="disclaimer">Verktøyet gir strategisk rådgivning og er ikke å anse som personlig investeringsrådgivning. Historisk avkastning er ingen garanti for fremtidig avkastning.</div>
+    </div><!-- /drawer -->
+
+    <!-- MAIN SPLIT: RESULTS + CHAT -->
+    <div class="advisory-main">
+      <!-- RESULTS PANEL -->
+      <div class="advisory-results" id="advisoryResults">
+        <div class="empty-state" id="emptyState">
+          <svg width="56" height="56" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" stroke="currentColor" stroke-width="2"/><path d="M20 40 L28 28 L36 34 L44 22" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <p style="font-family:'DM Serif Display',serif;font-size:1.1rem;margin-bottom:0.4rem;">Ingen analyse ennå</p>
+          <p style="font-size:0.85rem;">Bruk AI-rådgiveren til høyre, eller klikk «Manuell» til venstre for å fylle inn selv.</p>
+        </div>
+        <div id="resultsContent" class="hidden">
+          <div id="riskBanner" class="hidden"></div>
+          <div class="result-header">
+            <div>
+              <p style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-muted);margin-bottom:5px;">Anbefalt profil</p>
+              <div class="profile-badge">
+                <div class="profile-dot" id="profileDot"></div>
+                <div><div class="profile-name" id="profileName"></div><div class="profile-sub" id="profileSub"></div></div>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <p style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-muted);margin-bottom:5px;">Aktivafordeling</p>
+              <div class="alloc-strip" id="allocStrip"></div>
+              <div style="display:flex;gap:12px;margin-top:5px;font-size:0.7rem;color:var(--ink-muted);">
+                <span style="color:#2a7f7f">■ <span id="allocS"></span> Aksjer</span>
+                <span style="color:#c9a84c">■ <span id="allocB"></span> Obligasjoner</span>
+              </div>
+            </div>
+          </div>
+          <div class="info-cards">
+            <div class="info-card"><div class="label">Forventet verdi</div><div class="value teal" id="expVal"></div><div class="sub">etter <span id="yrLabel"></span></div></div>
+            <div class="info-card"><div class="label">Pessimistisk (5%)</div><div class="value" id="pessVal"></div><div class="sub">90% sannsynlighetsbånd</div></div>
+            <div class="info-card"><div class="label">Optimistisk (95%)</div><div class="value gold" id="optimVal"></div><div class="sub">90% sannsynlighetsbånd</div></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Simulert porteføljeutvikling — 1 000 scenarioer</div>
+            <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:0.7rem;color:var(--ink-muted);">
+              <span>━ Forventet</span><span>▓ 90% bånd</span><span>╌ Bankkonto</span>
+            </div>
+          </div>
+          <div class="result-disclaimer" id="capNote"></div>
+        </div>
+      </div>
+
+      <!-- AI CHAT PANEL (right) -->
+      <div class="advisory-chat-panel">
+        <div class="adv-chat-header">
+          <span><span class="ai-dot"></span>AI-rådgiver</span>
+          <span style="font-size:0.72rem;color:var(--ink-muted);">Oppdaterer grafen automatisk</span>
+        </div>
+        <div class="adv-chat-history" id="advChatHistory"></div>
+        <div class="adv-quick-row" id="advQuickRow"></div>
+        <div class="adv-input-area">
+          <input type="text" class="adv-input" id="advInput" placeholder="Skriv her…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();advSend();}">
+          <button class="adv-send" id="advSendBtn" onclick="advSend()">Send →</button>
+        </div>
+      </div>
+    </div><!-- /advisory-main -->
+  </div><!-- /advisory-body -->
+</div><!-- /screenAdvisory -->
+
+<script>
+// ══════════════════════════════════════
+// MONTE CARLO DATA
+// ══════════════════════════════════════
+const MC={"Forsiktig":{"p50":[1.0368439111,1.0759706576,1.1194567901,1.1593663646,1.2060557979,1.2613022134,1.3008273943,1.3583640119,1.4018906718,1.4692922368,1.523890774,1.5707705165,1.6217544908,1.6902473802,1.7517315708,1.8093458426,1.878412447,1.9494792134,2.0212791984,2.0928744145,2.1602654143,2.2355446585,2.3161806982,2.4145373072,2.5071396832,2.6102509904,2.7220239388,2.8612146564,2.969150795,3.0777392084,3.1581789907,3.3029388018,3.412537197,3.5845656251,3.720180452,3.8842778495,4.0026406177,4.1319247222,4.3565564344,4.4939208613],"p5":[0.9439933721,0.9434346665,0.9433261632,0.9550822699,0.9622450128,0.9870398413,1.0061175517,1.0206820244,1.0378134539,1.070527415,1.1087048312,1.1352217102,1.1545938915,1.1914119147,1.219505638,1.2378421387,1.2835549107,1.3269116169,1.3381341846,1.3840916664,1.4321432554,1.4600570868,1.5386902406,1.5721809856,1.5957610331,1.6611722256,1.7133149147,1.7653447167,1.8508362987,1.9296477569,1.9781874495,2.0435257922,2.0743759192,2.1308456137,2.1709566088,2.3004690761,2.3534480126,2.3998786023,2.5356277074,2.5895206299],"p95":[1.1363174527,1.228452374,1.3254152963,1.4093035274,1.4859453638,1.5749249796,1.6701647362,1.7369406188,1.8387947931,1.9155605805,2.0550121897,2.1565019357,2.2825751009,2.4034401104,2.5435593568,2.6681256096,2.759771408,2.8687801163,3.0279593227,3.1686765824,3.3081216845,3.5104492735,3.6751576071,3.9070526376,4.0668054707,4.2477902827,4.363117089,4.4998918241,4.8225197452,5.0704809478,5.2604000699,5.5268384807,5.7541413417,6.1179432941,6.3707421489,6.5557274252,6.8404290377,7.1188831361,7.4647648164,7.6965713358]},"Moderat":{"p50":[1.0474107589,1.0961635211,1.1462115825,1.2027974783,1.2653359228,1.3214719771,1.383318392,1.4438823959,1.5150894727,1.5871608914,1.6722782866,1.7364559032,1.8238749811,1.8996652087,1.9760781587,2.0691234581,2.164664796,2.262053073,2.3683808766,2.4775178151,2.6034394667,2.7330616804,2.8414060027,2.989676364,3.1266602046,3.2802306295,3.4459101412,3.6087635875,3.778224418,3.9216609876,4.1450891084,4.312070311,4.5157521944,4.7100154158,4.9846352424,5.1980160069,5.4501404376,5.7127552232,5.981512573,6.2760503638],"p5":[0.9562151089,0.954926089,0.9662849229,0.9977566007,1.0268797786,1.0554289615,1.0839364513,1.1128613726,1.1415240302,1.1886632079,1.2425097185,1.2846317329,1.3099462448,1.3643873827,1.4086709658,1.4724839321,1.4900370661,1.5533575619,1.5912144676,1.6813912764,1.7614748086,1.827144539,1.8823274818,1.9572519903,2.0123831235,2.082504709,2.1554415494,2.2655611201,2.3842888255,2.4267139572,2.5452831952,2.6655170235,2.7909115171,2.8996820758,3.0023572383,3.1801552557,3.2600762374,3.3834948616,3.5880519,3.6758874886],"p95":[1.1413902982,1.2442877234,1.330616793,1.4303389465,1.5250433089,1.6399899336,1.7632018396,1.8351777497,1.9449737001,2.0746368049,2.2059887295,2.3459263699,2.4765204512,2.6017273539,2.7207345589,2.9184505574,3.0660471542,3.2620135595,3.470022495,3.6861299204,3.9044853693,4.1161055432,4.3901310307,4.6013748714,4.8983724931,5.1913780582,5.4585136808,5.7720987321,6.1517568613,6.4116550526,6.7801232185,7.1956514604,7.6601635327,8.0656047498,8.5416777341,8.9827912374,9.5110007629,9.9495228204,10.5360091731,11.176660779]},"Balansert":{"p50":[1.0559722797,1.1049876069,1.1599488503,1.2230382013,1.3019969758,1.3671511257,1.4409753752,1.4999579412,1.5736624095,1.6624213929,1.7479137096,1.8426265175,1.9465043242,2.0187692145,2.1299133783,2.2590639193,2.3759597211,2.4896813171,2.6291076427,2.7589986917,2.8638189502,3.0216335776,3.1533886998,3.3475894277,3.5662796449,3.7524220655,3.9576598405,4.1105034099,4.3179987834,4.5294662923,4.7936581417,5.0362696562,5.3030502582,5.6038645833,5.9523973779,6.2680412699,6.4687686085,6.7814175599,7.141098853,7.5318286465],"p5":[0.9291016588,0.9341138224,0.9422047992,0.9721509497,0.9956724257,1.0266011605,1.0501227998,1.1072223518,1.1269476222,1.1641679549,1.216641926,1.2395705556,1.281380574,1.3214062062,1.3750907565,1.4387810528,1.5082831585,1.5599813565,1.6109687258,1.6624452067,1.7259808277,1.8313790683,1.9051657641,1.9707784599,2.0075495789,2.1123628375,2.1923539369,2.2516567679,2.3324680329,2.4360678823,2.6346150064,2.769205505,2.8759360052,2.9601359076,3.1347354795,3.2452251402,3.4183261006,3.5516149708,3.7931470929,3.8626921862],"p95":[1.1731524619,1.2910424705,1.3885105733,1.5034801302,1.6464331506,1.7805292885,1.8994694813,2.0238657592,2.1494873795,2.3415085748,2.4843093929,2.6660058344,2.8399398831,2.9990144832,3.1532850225,3.4119099434,3.6046460786,3.871508229,4.0884393112,4.3148904414,4.7209345951,4.9878409926,5.3780389221,5.7273369584,5.9843924485,6.466059469,6.7822031302,7.2873155208,7.9062328886,8.2898945662,8.7361397592,9.2798570735,9.9279068067,10.6987977673,11.2968412152,11.8844738459,12.8164297846,13.3776175657,14.4676216757,15.4127963297]},"Vekst":{"p50":[1.0657757659,1.1177578847,1.1799398267,1.2642390051,1.3363569645,1.4096711235,1.5051494816,1.5692441834,1.6653706622,1.7655345085,1.8367568366,1.9877711695,2.0821301306,2.2220135288,2.3464534417,2.4648247939,2.5890232135,2.7684939402,2.9690249439,3.0840611897,3.277629502,3.4349555632,3.6696808902,3.9043555163,4.1313113328,4.3524085518,4.5545544222,4.8661282688,5.1622893991,5.4056353233,5.7855307465,6.1650545695,6.404960713,6.8843963837,7.2158033258,7.7347003174,7.9852170016,8.4405790785,9.0071222886,9.588327463],"p5":[0.8895656243,0.8703339785,0.8923968083,0.9083787205,0.9165087741,0.9153703223,0.9614704939,0.9875628719,1.0248697322,1.0499958043,1.0942477658,1.1023518124,1.1275714857,1.1743440461,1.2135676885,1.2800081341,1.355790459,1.404948732,1.4543844971,1.4918402775,1.5855204577,1.6432509395,1.6808425397,1.7277042388,1.8180195998,1.9151651578,1.9259590199,2.0618339491,2.0686159259,2.2226598226,2.3615305442,2.5328517567,2.5973708265,2.6647859862,2.7719381028,2.8897128172,2.9767847088,3.1824514585,3.3585985337,3.4815158257],"p95":[1.2291488069,1.3824668,1.5385236717,1.6929280573,1.88417899,2.0727009014,2.2390538538,2.4363798095,2.6097688785,2.8563743248,3.1270539141,3.3887383408,3.6696100052,3.8945620281,4.2723894777,4.5928311223,4.9035021664,5.3122870202,5.7536029192,6.1897403859,6.7292039925,7.1699658327,7.7988111916,8.3524939024,8.8170765578,9.4252801844,10.2253649071,11.1639674924,11.7048134155,12.4741351562,13.3666780396,14.4711604129,15.3680744889,16.0555568762,18.0376552043,19.5710437218,20.5443871003,22.2009038412,24.4673437958,25.6109997548]},"Offensiv":{"p50":[1.069593515,1.1311159376,1.1848864393,1.2706714728,1.3572854313,1.4420791054,1.5424884164,1.6153474928,1.708656873,1.8214534808,1.8987962788,2.0811856312,2.1659560323,2.3200273501,2.4360948877,2.5668140214,2.7396403154,2.9302206674,3.13098396,3.3043912375,3.49378566,3.680235234,3.9467795635,4.1943839767,4.3845887135,4.6377009206,5.0149665138,5.2813527702,5.59952334,5.8417215066,6.3485368708,6.7520224775,7.111860124,7.590613456,8.0041659068,8.5414830461,8.9053710792,9.3975676316,9.9567326701,10.5408380676],"p5":[0.8569001476,0.8279178033,0.8369949696,0.8463823481,0.8509787385,0.840390053,0.8870164899,0.9127778301,0.9252017616,0.9535777614,0.975076485,0.9959967144,1.0047746595,1.0411678984,1.0889365159,1.1135875739,1.1843329558,1.2543775089,1.274473601,1.3271764336,1.4220406987,1.4338225922,1.4936222509,1.5567803628,1.6075578551,1.6799814928,1.7609571081,1.8207930492,1.7960846392,2.0244972432,2.1277023651,2.2467991698,2.3299020534,2.3372375846,2.3927841572,2.5050350421,2.6112153359,2.7697340468,2.8641986129,2.96683711],"p95":[1.2766208844,1.4596279019,1.6665227472,1.8509729809,2.0842271672,2.3251178769,2.5235911226,2.7765541956,3.0239063624,3.3360365327,3.6829643438,4.0063486408,4.4332504982,4.7357982903,5.2638556165,5.633586798,5.9698954452,6.5991445661,7.1923268156,7.884641404,8.5308147358,9.4095924035,9.8205378914,10.6699149206,11.6581989178,12.4406011572,13.5836731624,14.9115724996,15.8186739615,16.8234576981,18.0220686502,19.4070429015,21.1287318899,22.4936268899,24.6910031628,27.0129640953,28.5030651521,30.9160232153,34.766345971,37.683670996]},"Bankkonto":{"p50":[1.0247953351,1.0488053544,1.076629525,1.1024575061,1.1302048054,1.1590011063,1.1844742807,1.2155327241,1.2449842783,1.2762252949,1.3087252245,1.3360995213,1.3679705294,1.4041324227,1.4393929274,1.4719009185,1.5114987273,1.5509193434,1.5868789283,1.6212823036,1.6705040423,1.7042503489,1.7432388885,1.789441493,1.8321264001,1.8787625985,1.9242417643,1.9764452933,2.0179814222,2.0677267565,2.1210976664,2.1767485289,2.2372710706,2.293108962,2.3461748404,2.4062501063,2.4663158321,2.5390432275,2.5906522482,2.6466665241],"p5":[0.9902718739,1.0011913892,1.0159077152,1.0346708958,1.0492049528,1.0684134776,1.0888769821,1.11249469,1.1325486441,1.1505752946,1.1782144724,1.1967183103,1.2159469905,1.2474926157,1.2675207988,1.3089542654,1.3301986726,1.3576972073,1.3821286479,1.407155515,1.4358123306,1.4748089374,1.5097618872,1.5324239256,1.5638525914,1.5966689051,1.6307504854,1.6650785386,1.7072013323,1.7449450258,1.7948532622,1.8359586374,1.8631682208,1.9026804657,1.9356465051,1.9762519615,2.0348264671,2.0806127104,2.1204485253,2.179219099],"p95":[1.0579472445,1.0972030243,1.1347976664,1.1737182807,1.2131689857,1.2512532824,1.2880252919,1.326957434,1.3671206042,1.4105614034,1.4459475353,1.4900932278,1.5380183441,1.5822861649,1.6234865206,1.6684142211,1.7218877528,1.776442453,1.8279007543,1.8812597345,1.9309826263,1.9817662288,2.0433348124,2.0880392268,2.1405170654,2.2174215261,2.279768129,2.3434461089,2.404562223,2.4794790314,2.5585261465,2.6328365417,2.6852784874,2.761251456,2.844624257,2.9313760288,2.9984585532,3.0725531932,3.1573903732,3.2319566464]}};
+
+// ══════════════════════════════════════
+// MODEL LOGIC
+// ══════════════════════════════════════
+const PROFILES=[{name:"Forsiktig",stocks:0,bonds:1,color:"#5c7a9e"},{name:"Moderat",stocks:0.3,bonds:0.7,color:"#2a7f7f"},{name:"Balansert",stocks:0.5,bonds:0.5,color:"#c9a84c"},{name:"Vekst",stocks:0.8,bonds:0.2,color:"#c97a2a"},{name:"Offensiv",stocks:1,bonds:0,color:"#b84040"}];
+// Risk labels: Ingen=0, Meget lav=1, Lav=2, Middels=3, Offensiv=4, Høy=5
+const RISK_SCORE={"Ingen":0,"Meget lav":1,"Lav":2,"Middels":3,"Offensiv":4,"Høy":5};
+const RISK_LABELS=["Ingen","Meget lav","Lav","Middels","Offensiv","Høy"];
+const ALLOC_TABLE=[["Bank","Bank","Bank","Bank","Bank","Bank"],["Bank","Bank",0,0.2,0.35,0.5],["Bank",0,0.2,0.35,0.5,0.65],["Bank",0.2,0.35,0.5,0.65,0.8],["Bank",0.35,0.5,0.65,0.8,1]];
+function hBucket(y){if(y<1)return 0;if(y<=3)return 1;if(y<=7)return 2;if(y<=15)return 3;return 4;}
+
+// ── NEW CAPACITY LOGIC ──
+// savings_rate = monthly_surplus / net_income → caps max equity
+// buffer months from buffer input → further adjustment (brems)
+// Behavioral adjustment (from MC Q1) handled separately in risk profile only
+function capacityFromInputs(income, expenses, bufferMonths){
+  const monthlySurplus = (income - expenses) / 12;
+  const savingsRate = income > 0 ? monthlySurplus / (income / 12) : 0;
+
+  // Step 1: base max equity from savings rate
+  let maxEquity;
+  if      (savingsRate > 0.30) maxEquity = 1.00;
+  else if (savingsRate > 0.20) maxEquity = 0.80;
+  else if (savingsRate > 0.10) maxEquity = 0.65;
+  else if (savingsRate > 0.05) maxEquity = 0.50;
+  else                         maxEquity = 0.35;
+
+  // Step 2: buffer brake
+  let bufferPenalty = 0;
+  if      (bufferMonths < 1) bufferPenalty = 2;
+  else if (bufferMonths < 2) bufferPenalty = 1;
+
+  // Convert maxEquity to risk level index, apply penalty, convert back
+  // Equity caps: 0=Ingen(Bank/0%), 1=Meget lav(0-20%), 2=Lav(20-35%), 3=Middels(35-50%), 4=Offensiv(50-80%), 5=Høy(80-100%)
+  const equityToLevel = (eq) => {
+    if (eq <= 0.20) return 1;
+    if (eq <= 0.35) return 2;
+    if (eq <= 0.50) return 3;
+    if (eq <= 0.80) return 4;
+    return 5;
+  };
+  const baseLevel = equityToLevel(maxEquity);
+  const cappedLevel = Math.max(0, baseLevel - bufferPenalty);
+
+  // label for display
+  const labels = ["Ingen","Lav","Lav","Middels","Offensiv","Høy"];
+  const capLabels = ["Ingen","Lav","Middels","God","Høy"];
+  // Map cappedLevel (0-5) to friendly display label (0-4)
+  const displayLevel = Math.min(4, cappedLevel);
+  const displayLabels = ["Ingen","Lav","Middels","God","Høy"];
+
+  return {
+    maxEquityFraction: maxEquity,
+    cappedLevel,       // 0-5 risk level index this person can handle
+    displayLevel,      // 0-4 for bar segments
+    label: displayLabels[displayLevel],
+    savingsRate,
+    monthlySurplus
+  };
+}
+
+// Apply capacity cap to a chosen risk label — hard limit
+function applyCapacity(riskLabel, cap){
+  const chosen = RISK_SCORE[riskLabel] ?? 3;
+  const capped = Math.min(chosen, cap.cappedLevel);
+  return RISK_LABELS[capped];
+}
+
+function profForAlloc(s){let b=PROFILES[0],bd=1e9;for(const p of PROFILES){const d=Math.abs(p.stocks-s);if(d<bd){bd=d;b=p;}}return b;}
+function fmt(v){if(v>=1e9)return`${(v/1e9).toFixed(2)} mrd kr`;if(v>=1e6)return`${(v/1e6).toFixed(2)} mill kr`;return`${Math.round(v).toLocaleString('nb-NO')} kr`;}
+
+// ══════════════════════════════════════
+// SCREEN NAVIGATION
+// ══════════════════════════════════════
+function goScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen'+name.charAt(0).toUpperCase()+name.slice(1)).classList.add('active');
+  document.getElementById('navDecision').classList.toggle('active',name==='landing');
+  document.getElementById('navAdvisory').classList.toggle('active',name==='advisory');
+  if(name==='advisory'&&document.getElementById('advChatHistory').children.length===0){
+    initAdvChat();
+    // Drawer stays closed — AI chat drives the flow; user opens manually if needed
+    closeDrawer();
+  }
+}
+
+// ══════════════════════════════════════
+// DRAWER
+// ══════════════════════════════════════
+let drawerOpen=false;
+function toggleDrawer(){drawerOpen?closeDrawer():openDrawer();}
+function openDrawer(){drawerOpen=true;document.getElementById('drawer').classList.add('open');document.getElementById('advisoryBody').classList.add('drawer-open');}
+function closeDrawer(){drawerOpen=false;document.getElementById('drawer').classList.remove('open');document.getElementById('advisoryBody').classList.remove('drawer-open');}
+
+// ══════════════════════════════════════
+// DRAWER FORM
+// ══════════════════════════════════════
+let selectedRisk="Offensiv",chartInst=null;
+const mcAnswers={};
+
+function selectPill(el,gid){document.querySelectorAll(`#${gid} .pill`).forEach(p=>{p.classList.remove('active','teal');});el.classList.add('active','teal');}
+function updateSlider(){document.getElementById('horizonVal').textContent=document.getElementById('horizon').value+' år';updateCap();}
+function updateCap(){
+  const inc=+document.getElementById('income').value||0;
+  const exp=+document.getElementById('expenses').value||0;
+  const buf=+document.getElementById('bufferMonths').value||0;
+  const cap=capacityFromInputs(inc,exp,buf);
+  const chosenLevel=RISK_SCORE[selectedRisk]??3;
+  const warn=chosenLevel>cap.cappedLevel;
+  const segs=document.querySelectorAll('#capBar .cap-seg');
+  segs.forEach((s,i)=>{
+    const active=i<=cap.displayLevel;
+    s.classList.toggle('active',active&&!warn);
+    s.classList.toggle('warn',active&&warn);
+  });
+  document.getElementById('capLabel').textContent=`Evne til å tåle svingninger: ${cap.label}${warn?' ⚠ Valgt risiko overstiger kapasitet':''}`;
+}
+function updateSuit(){
+  const pill=document.querySelector('#suitGroup .pill.active');
+  const val=pill?pill.dataset.val:'questions';
+  document.getElementById('mcBlock').classList.toggle('hidden',val==='experience'||val==='education');
+  document.getElementById('suitInfoExpert').classList.toggle('hidden',val==='none'||val==='questions');
+  document.getElementById('suitInfoNone').classList.toggle('hidden',val!=='none');
+}
+function toggleLesMer(){
+  const el=document.getElementById('lesMerContent');el.classList.toggle('hidden');
+  document.querySelector('.lesMer').textContent=el.classList.contains('hidden')?'Les mer om hva profilene innebærer ▾':'Skjul ▴';
+}
+function selectMC(el){
+  const q=el.dataset.q;
+  document.querySelectorAll(`.mc-opt[data-q="${q}"]`).forEach(o=>o.classList.remove('selected'));
+  el.classList.add('selected');mcAnswers[q]=+el.dataset.score;
+  const n=Object.keys(mcAnswers).length;
+  if(n<4){document.getElementById('mcResult').textContent=`${n}/4 besvart`;return;}
+  const t=Object.values(mcAnswers).reduce((a,b)=>a+b,0);
+  // Scores map to new labels: Lav / Middels / Offensiv / Høy
+  const r=t<=5?"Lav":t<=8?"Middels":t<=11?"Offensiv":"Høy";
+  document.getElementById('mcResult').textContent=`Anbefalt risikovilje: ${r}`;
+  document.getElementById('riskFromMCNote').textContent=`Fra spørsmål: ${r} (kan overstyres nedenfor)`;
+  document.getElementById('riskFromMCNote').classList.remove('hidden');
+  document.querySelectorAll('#riskGroup .pill').forEach(p=>{p.classList.toggle('active',p.dataset.val===r);p.classList.toggle('teal',p.dataset.val===r);});
+  selectedRisk=r;updateCap();
+}
+
+// ══════════════════════════════════════
+// CALCULATE & RENDER RESULTS
+// ══════════════════════════════════════
+function renderResults(params){
+  const {startCapital=0,monthly=5000,horizon=15,income=600000,expenses=350000,bufferMonths=3,costS=0.007,costB=0.003,riskLabel=selectedRisk,skipBanner=false}=params;
+  const cap=capacityFromInputs(income,expenses,bufferMonths);
+  const ar=applyCapacity(riskLabel,cap);
+  const alloc=ALLOC_TABLE[hBucket(horizon)][RISK_SCORE[ar]??3];
+  const pAlloc=alloc==="Bank"?0:alloc;
+  const profile=alloc==="Bank"?{name:"Bankkonto",stocks:0,bonds:0,color:"#7a9e7a"}:profForAlloc(pAlloc);
+  const cf=pAlloc*costS+(1-pAlloc)*costB;
+  const data=MC[profile.name==="Bankkonto"?"Bankkonto":profile.name]||MC["Forsiktig"];
+  const sv=monthly*12;
+  const p50=[],p5=[],p95=[],cash=[];
+  for(let yr=0;yr<horizon;yr++){
+    const cd=Math.pow(1-cf,yr+1);
+    // Start capital: grows from year 0 by the cumulative factor at year yr
+    const sc50 =startCapital*data.p50[yr]*cd;
+    const sc5  =startCapital*data.p5[yr]*cd;
+    const sc95 =startCapital*data.p95[yr]*cd;
+    const scCash=startCapital*MC.Bankkonto.p50[yr];
+
+    // Progressive savings: savings invested in year k grow from year k to year yr.
+    // Growth factor for savings invested in year k = data.p50[yr] / data.p50[k]
+    // Sum over k=0..yr of: sv * (data.p50[yr]/data.p50[k]) * cost_drag_from_k_to_yr
+    // Simplified with uniform cost drag approximation: sv * data.p50[yr]/data.p50[k] * (1-cf)^(yr-k)
+    let sav50=0,sav5=0,sav95=0,savCash=0;
+    for(let k=0;k<=yr;k++){
+      const kDrag=Math.pow(1-cf,yr-k+1);
+      sav50 +=sv*(data.p50[yr]/data.p50[k])*kDrag;
+      sav5  +=sv*(data.p5[yr] /data.p5[k] )*kDrag;
+      sav95 +=sv*(data.p95[yr]/data.p95[k])*kDrag;
+      savCash+=sv*(MC.Bankkonto.p50[yr]/MC.Bankkonto.p50[k]);
+    }
+    p50.push(sc50+sav50);
+    p5.push(sc5+sav5);
+    p95.push(sc95+sav95);
+    cash.push(scCash+savCash);
+  }
+  // Banner
+  if(!skipBanner){
+    const banner=document.getElementById('riskBanner');
+    if(ar!==riskLabel){
+      banner.className='alert warn';
+      banner.innerHTML=`<span class="alert-icon">⚠️</span><div><strong>Risiko justert ned til ${ar}</strong> — din evne til å tåle svingninger (${cap.label}) tillater ikke høyere risiko enn dette.${startCapital>100000?` Med ${fmt(startCapital)} i engangsinvestering er dette særlig viktig.`:''}</div>`;
+    } else if((RISK_SCORE[riskLabel]??0)>cap.cappedLevel){
+      banner.className='alert info';
+      banner.innerHTML=`<span class="alert-icon">ℹ️</span><div>Valgt risikovilje er i øvre sjikt av din kapasitet (${cap.label}). Sørg for tilstrekkelig likviditetsbuffer.${startCapital>300000?` Engangsinvestering på ${fmt(startCapital)} øker eksponeringen betraktelig.`:''}</div>`;
+    } else {
+      banner.className='hidden';
+    }
+  }
+  // Fill results
+  document.getElementById('emptyState').classList.add('hidden');
+  document.getElementById('resultsContent').classList.remove('hidden');
+  document.getElementById('profileDot').style.background=profile.color;
+  document.getElementById('profileName').textContent=profile.name;
+  document.getElementById('profileSub').textContent=`${Math.round(pAlloc*100)}% aksjer · ${Math.round((1-pAlloc)*100)}% obligasjoner`;
+  document.getElementById('allocStrip').innerHTML=`<div style="flex:${Math.max(pAlloc,0.001)};background:${profile.color}"></div><div style="flex:${Math.max(1-pAlloc,0.001)};background:#c9a84c"></div>`;
+  document.getElementById('allocS').textContent=`${Math.round(pAlloc*100)}%`;
+  document.getElementById('allocB').textContent=`${Math.round((1-pAlloc)*100)}%`;
+  document.getElementById('yrLabel').textContent=`${horizon} år`;
+  document.getElementById('expVal').textContent=fmt(p50[horizon-1]);
+  document.getElementById('pessVal').textContent=fmt(p5[horizon-1]);
+  document.getElementById('optimVal').textContent=fmt(p95[horizon-1]);
+  const capTexts=["Disponibel inntekt er svært begrenset. Bygg en buffer før du investerer.","Evnen til å tåle svingninger er lav. Den investerte kapitalen spiller en viktig rolle for din økonomi.","Evnen til å tåle svingninger er middels — et moderat tap vil ikke ramme deg hardt.","God evne til å tåle svingninger. Selv store markedsfall vil ikke ha markant innvirkning på din levestandard.","Høy evne til å tåle svingninger. Din finansielle situasjon er svært robust."];
+  document.getElementById('capNote').textContent=capTexts[Math.min(cap.displayLevel,4)];
+  if(chartInst)chartInst.destroy();
+  const labels=Array.from({length:horizon},(_,i)=>`År ${i+1}`);
+  chartInst=new Chart(document.getElementById('mainChart').getContext('2d'),{type:'line',data:{labels,datasets:[
+    {data:p95,borderColor:'transparent',backgroundColor:'rgba(42,127,127,0.12)',fill:'+1',pointRadius:0,tension:0.4,label:'95%'},
+    {data:p50,borderColor:profile.color,backgroundColor:'transparent',borderWidth:2.5,pointRadius:0,tension:0.4,fill:false,label:'Forventet'},
+    {data:p5,borderColor:'transparent',backgroundColor:'rgba(42,127,127,0.12)',fill:'-1',pointRadius:0,tension:0.4,label:'5%'},
+    {data:cash,borderColor:'#aaa',borderDash:[5,4],backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0.4,fill:false,label:'Bankkonto'},
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.parsed.y)}`}}},scales:{x:{ticks:{maxTicksLimit:10,font:{family:'DM Sans',size:11},color:'#7a7a9a'},grid:{color:'#f0ece3'}},y:{ticks:{font:{family:'DM Sans',size:11},color:'#7a7a9a',callback:v=>fmt(v)},grid:{color:'#f0ece3'}}}}});
+  return {p50:p50[horizon-1],p5:p5[horizon-1],p95:p95[horizon-1],profile,pAlloc,ar,cap};
+}
+
+function calculate(){
+  const r=renderResults({
+    startCapital:+document.getElementById('startCapital').value||0,
+    monthly:+document.getElementById('monthlySavings').value||0,
+    horizon:+document.getElementById('horizon').value,
+    income:+document.getElementById('income').value||0,
+    expenses:+document.getElementById('expenses').value||0,
+    bufferMonths:+document.getElementById('bufferMonths').value||0,
+    costS:+document.getElementById('costStocks').value/100,
+    costB:+document.getElementById('costBonds').value/100,
+    riskLabel:selectedRisk
+  });
+  closeDrawer();
+}
+
+['income','expenses','bufferMonths'].forEach(id=>document.getElementById(id).addEventListener('input',updateCap));
+document.getElementById('horizon').addEventListener('input',updateSlider);
+updateCap();updateSuit();
+
+// ══════════════════════════════════════
+// LANDING — DECISION MODE (Claude API)
+// ══════════════════════════════════════
+let landingMsgs=[],landingLocked=false;
+const DECISION_SYSTEM=`Du er en vennlig og jordnær finansiell beslutningstaker i en norsk app.
+
+## Din oppgave
+Hjelp brukeren å fatte en KLAR BESLUTNING raskt om hva de skal gjøre med ekstra penger. Still max 4–5 korte spørsmål, ett om gangen, deretter gi ÉN klar anbefaling. ALDRI si "det kommer an på" uten å konkludere.
+
+## Spørsmål du MÅ stille (i denne rekkefølgen, ett om gangen)
+1. Hvor mye snakker vi om — er det et engangsbeløp, månedlig sparing, eller begge deler? Be om konkrete tall.
+2. Har de en buffer (antall måneder utgifter de har lett tilgjengelig)?
+3. Har de gjeld? Hvis ja: HVILKEN RENTE? Dette er kritisk.
+   → Hvis de ikke svarer på renten: spør én gang til eksplisitt: "Hva er renten på lånet ditt omtrent?"
+   → Bruk 3% som siste utvei hvis de etter to forsøk ikke svarer.
+4. Tidshorisont — når kan de tenke seg å bruke pengene?
+5. Komfort med svingninger (kun nødvendig hvis investering er aktuelt)
+
+## FORMATERING — følg disse reglene nøye
+- Skriv alltid én blank linje (linjeskift) mellom spørsmål og svar, og mellom avsnitt.
+- Bruk HTML-formatering i alle svar:
+  - Alternativer og begrunnelsespunkter: <ul><li>...</li></ul>
+  - Avsnittsskille: <br> mellom naturlige seksjoner
+  - Viktige ord: <strong>ord</strong>
+- Hold hvert svar kort — maks 3–4 setninger + ett spørsmål.
+- ALDRI skriv lange avsnitt med sammenhengende tekst når en liste er mer lesbart.
+
+## QUICK-svar (obligatorisk — send alltid etter hvert svar)
+Etter hvert svar, send denne blokken med 2–5 relevante svaralternativer tilpasset NØYAKTIG det du nettopp spurte om:
+[QUICK:["Alternativ 1","Alternativ 2","Alternativ 3"]]
+
+Eksempler:
+- Spurte om beløp → [QUICK:["5 000 kr/mnd","10 000 kr/mnd","50 000 kr engangsbeløp","200 000 kr engangsbeløp","500 000 kr engangsbeløp"]]
+- Spurte om buffer → [QUICK:["Ja, over 3 måneder","Ca. 1–2 måneder","Nei, ingen buffer"]]
+- Spurte om gjeld → [QUICK:["Ja, boliglån","Ja, forbrukslån (høy rente)","Nei, ingen gjeld"]]
+- Spurte om rente → [QUICK:["Ca. 2%","Ca. 3%","Ca. 4%","Ca. 5%","Over 6%"]]
+- Spurte om horisont → [QUICK:["Under 3 år","3–7 år","7–15 år","Over 15 år"]]
+- Spurte om risiko → [QUICK:["Trygt og stabilt","Litt risiko er ok","Best mulig avkastning"]]
+- Etter anbefaling → [QUICK:["Fortell mer","Hva om jeg gjør det omvendt?","Se full analyse"]]
+
+## CHART-data (obligatorisk ved anbefaling)
+Når du gir anbefaling, send ALLTID denne blokken med reelle tall fra samtalen:
+[CHART:{"lumpSum":0,"monthly":0,"years":15,"mortgageRate":0.03,"includeInvest":true,"includeMortgage":false}]
+
+- lumpSum: engangsbeløp i NOK (0 hvis ikke aktuelt)
+- monthly: månedlig sparing i NOK (0 hvis ikke aktuelt)
+- years: ALLTID bruk øvre grense av intervall — "7–15 år" → 15, "3–7 år" → 7, "over 15 år" → 20
+- mortgageRate: rente som desimal (0.03 = 3%)
+- includeInvest: true hvis investering er anbefalt eller relevant alternativ
+- includeMortgage: true kun hvis de har gjeld
+
+## Kontotype og neste steg (alltid inkluder i anbefalingen)
+Avslutt alltid rec-box med ett konkret neste steg basert på profilen:
+
+**Kontotype-regler:**
+- Aksjer ≥ 80% → anbefal ASK (Aksjesparekonto) — skattefordel ved gevinst og bytte av fond
+- Aksjer mellom 20–80% (obligasjoner > 20%) → vurder kombinasjonsfond med 80–90% aksjeandel i stedet — disse kvalifiserer for ASK, er enklere å administrere enn å dele mellom ASK og fondskonto, og er et like godt alternativ. Nevn at kombinasjonsfond ofte er aktivt forvaltet og at brukeren bør se etter lavest mulig forvaltningshonorar, gjerne under 0,5% — og om mulig passivt forvaltet.
+- Aksjer < 20% eller bare sparing → anbefal høyrentekonto
+- Hvis brukeren er ung (under ~34 år), jobber og betaler skatt → nevn BSU som første prioritet før annen investering ("Fyll BSU-kvoten din først — du får 20% skattefradrag på innskudd opp til 31 500 kr/år")
+
+**Bank/plattform-eksempler** (inkluder alltid 2–3 konkrete eksempler + "din egen bank"):
+- For ASK/fond: Nordnet, Kron, DNB, Sbanken, din egen bank
+- For kombinasjonsfond i ASK: Nordnet, Kron, Sbanken, din egen bank — søk etter kombinasjonsfond med 80–90% aksjer og lav kostnad
+- For høyrentekonto: Bulder Bank, Sbanken, Lunar, din egen bank
+
+Eksempel på neste-steg-setning i rec-box:
+<div class="next-step">📋 <strong>Slik kommer du i gang:</strong> Opprett en <strong>ASK</strong> hos Nordnet, Kron eller din egen bank — og start å spare. Det tar 10 minutter.</div>
+
+## Format for anbefaling
+Bruk alltid denne HTML-strukturen nøyaktig:
+<div class="rec-box">
+<div class="rec-title">💡 Min anbefaling</div>
+<div class="alloc-line">[Enkel fordeling]</div>
+<ul>
+<li>[Begrunnelse punkt 1]</li>
+<li>[Begrunnelse punkt 2]</li>
+<li>[Begrunnelse punkt 3 valgfritt]</li>
+</ul>
+<div class="next-step">📋 <strong>Slik kommer du i gang:</strong> [kontotype + 2–3 banker/plattformer + din egen bank]</div>
+<div class="flip-note">🔄 Hvis du hadde gjort det motsatte: [kort innsikt]</div>
+</div>
+
+Send CHART-blokken direkte etter rec-box, deretter QUICK-blokken, deretter eventuell knapp:
+<button class="deeper-btn" onclick="triggerDeeper()">Se full analyse i KapitalKompasset →</button>
+
+## Beslutningsprinsipper (bruk internt)
+- Buffer under 3 måneder → prioriter buffer
+- Gjeld med rente over 5% → nedbetal gjeld før investering
+- Gjeld med rente 2–5% → avhenger av horisont, kan splitte
+- Gjeld under 2% → investering gir sannsynligvis bedre avkastning
+- Stabil økonomi + god buffer + lang horisont → investering
+- Kombinasjon → foreslå splitting med konkrete prosenter
+
+## Tone
+- Varm, bestemt, praktisk. Som en smart venn.
+- Ingen jargon. Korte setninger. Én ting om gangen.
+- ALDRI start med analyse — still spørsmål først.`;
+
+// ── AI REPLY POST-PROCESSING ──
+// Strip markdown asterisks, highlight question sentences with teal
+function formatAIReply(html){
+  // Strip bold/italic asterisks (**text** → text, *text* → text)
+  let out = html
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '$1');
+  // Highlight sentence-level questions: any run of text ending with ?
+  // Works on plain text nodes between tags — split on sentence boundaries
+  // Wrap sequences ending in ? inside .ai-question span
+  // Strategy: split the text content of text nodes and re-wrap
+  // Simpler reliable approach: regex on plain text segments outside HTML tags
+  out = out.replace(/([^<>]{4,}?\?)/g, (m) => {
+    // Don't wrap if it's clearly inside an attribute or tag
+    return `<span class="ai-question">${m}</span>`;
+  });
+  return out;
+}
+
+function landingAddBubble(html,role){
+  const processed = role==='ai' ? formatAIReply(html) : html;
+  const d=document.createElement('div');d.className=`bubble ${role}`;d.innerHTML=processed;
+  document.getElementById('landingMsgs').appendChild(d);
+  document.querySelector('#screenLanding .landing-chat').scrollTop=99999;
+  return d;
+}
+function landingShowTyping(){const d=landingAddBubble('<div class="typing-dots"><span></span><span></span><span></span></div>','ai');d.id='lTyping';return d;}
+function landingRemoveTyping(){const t=document.getElementById('lTyping');if(t)t.remove();}
+function setLandingQuick(opts){const a=document.getElementById('landingQuick');a.innerHTML='';(opts||[]).forEach(label=>{const b=document.createElement('button');b.className='qbtn';b.textContent=label;b.onclick=()=>{document.getElementById('landingInput').value=label;landingSend();};a.appendChild(b);});}
+
+// ── LANDING GROWTH CHART ──
+let landingChartInst=null;
+function renderLandingChart(p){
+  const {lumpSum=0,monthly=0,years=15,mortgageRate=0.03,includeInvest=true,includeMortgage=false}=p;
+  const wrap=document.getElementById('landingChartWrap');
+  wrap.classList.remove('hidden');
+
+  const INVEST_RETURN=0.07;
+  const SAVINGS_RETURN=0.025;
+  const labels=[];
+  const investSeries=[],mortgageSeries=[],savingsSeries=[];
+
+  for(let yr=1;yr<=years;yr++){
+    labels.push(`År ${yr}`);
+    // Lump sum: grows by compounding. Monthly: FV of annuity. Both combined.
+    const lumpFactor=Math.pow(1+INVEST_RETURN,yr);
+    const annuFV=monthly>0?monthly*12*((Math.pow(1+INVEST_RETURN,yr)-1)/INVEST_RETURN):0;
+    const lumpSavFactor=Math.pow(1+SAVINGS_RETURN,yr);
+    const annuSavFV=monthly>0?monthly*12*((Math.pow(1+SAVINGS_RETURN,yr)-1)/SAVINGS_RETURN):0;
+    const lumpMortFactor=Math.pow(1+mortgageRate,yr);
+    const annuMortFV=monthly>0?monthly*12*((Math.pow(1+mortgageRate,yr)-1)/mortgageRate):0;
+
+    if(includeInvest) investSeries.push(Math.round(lumpSum*lumpFactor+annuFV));
+    if(includeMortgage) mortgageSeries.push(Math.round(lumpSum*lumpMortFactor+annuMortFV));
+    savingsSeries.push(Math.round(lumpSum*lumpSavFactor+annuSavFV));
+  }
+
+  const datasets=[];
+  if(includeInvest) datasets.push({label:'Investering',data:investSeries,borderColor:'#2a7f7f',backgroundColor:'rgba(42,127,127,0.08)',borderWidth:2.5,fill:true,pointRadius:0,tension:0.4});
+  if(includeMortgage) datasets.push({label:'Nedbetaling boliglån',data:mortgageSeries,borderColor:'#c9a84c',backgroundColor:'rgba(201,168,76,0.08)',borderWidth:2,fill:false,pointRadius:0,tension:0.4,borderDash:[5,4]});
+  datasets.push({label:'Bankkonto',data:savingsSeries,borderColor:'#aaa',backgroundColor:'transparent',borderWidth:1.5,fill:false,pointRadius:0,tension:0.4,borderDash:[3,3]});
+
+  const legendItems=[
+    includeInvest?`<span class="legend-item"><span class="legend-dot" style="background:#2a7f7f"></span>Investering</span>`:'',
+    includeMortgage?`<span class="legend-item"><span class="legend-dot" style="background:#c9a84c"></span>Nedbetaling lån</span>`:'',
+    `<span class="legend-item"><span class="legend-dot" style="background:#aaa"></span>Bankkonto</span>`,
+  ].filter(Boolean).join('');
+
+  // Headline: show both lump sum and monthly if applicable
+  const parts=[];
+  if(lumpSum>0) parts.push(fmt(lumpSum)+' engangsbeløp');
+  if(monthly>0) parts.push(fmt(monthly)+'/mnd');
+  const headline=(parts.join(' + ')||'Beregning')+` over ${years} år`;
+
+  wrap.innerHTML=`
+    <div class="landing-chart-card">
+      <div class="chart-header">
+        <span class="chart-headline">${headline}</span>
+        <div class="chart-legend">${legendItems}</div>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="landingChart"></canvas>
+      </div>
+      <div class="chart-note">Illustrerende beregning — investering basert på forventet 7% geometrisk avkastning etter kostnader</div>
+    </div>`;
+
+  if(landingChartInst)landingChartInst.destroy();
+  landingChartInst=new Chart(document.getElementById('landingChart').getContext('2d'),{
+    type:'line',data:{labels,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.parsed.y)}`}}},
+      scales:{
+        x:{ticks:{maxTicksLimit:8,font:{family:'DM Sans',size:10},color:'#7a7a9a'},grid:{color:'#f0ece3'}},
+        y:{ticks:{font:{family:'DM Sans',size:10},color:'#7a7a9a',callback:v=>fmt(v)},grid:{color:'#f0ece3'}}
+      }
+    }
+  });
+  setTimeout(()=>wrap.scrollIntoView({behavior:'smooth',block:'nearest'}),100);
+}
+
+async function landingSend(){
+  if(landingLocked)return;
+  const inp=document.getElementById('landingInput');
+  const text=inp.value.trim();if(!text)return;
+  inp.value='';setLandingQuick([]);
+  landingAddBubble(text,'user');
+  landingMsgs.push({role:'user',content:text});
+  await landingCall();
+}
+async function landingCall(seed){
+  landingLocked=true;document.getElementById('landingSendBtn').disabled=true;
+  landingShowTyping();
+  const msgs=seed?[{role:'user',content:seed}]:landingMsgs;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:900,system:DECISION_SYSTEM,messages:msgs})});
+    const data=await res.json();
+    landingRemoveTyping();
+    if(data.error){landingAddBubble(`<em style="color:#b84040">Feil: ${data.error.message}</em>`,'ai');}
+    else{
+      let reply=data.content.map(b=>b.text||'').join('');
+      // Extract CHART block
+      const chartMatch=reply.match(/\[CHART:(\{.*?\})\]/s);
+      if(chartMatch){
+        try{renderLandingChart(JSON.parse(chartMatch[1]));}catch(e){console.warn('chart parse',e);}
+        reply=reply.replace(/\[CHART:\{.*?\}\]/s,'').trim();
+      }
+      // Extract QUICK block — AI-specified quick replies
+      const quickMatch=reply.match(/\[QUICK:(\[.*?\])\]/s);
+      let quickOpts=null;
+      if(quickMatch){
+        try{quickOpts=JSON.parse(quickMatch[1]);}catch(e){console.warn('quick parse',e);}
+        reply=reply.replace(/\[QUICK:\[.*?\]\]/s,'').trim();
+      }
+      landingAddBubble(reply,'ai');
+      landingMsgs.push({role:'assistant',content:data.content.map(b=>b.text||'').join('')});
+      // Use AI-specified quick replies if available, else minimal fallback
+      if(quickOpts&&quickOpts.length) setLandingQuick(quickOpts);
+      else setLandingQuick(["Fortsett","Jeg vil korrigere noe"]);
+    }
+  }catch(e){landingRemoveTyping();landingAddBubble('<em style="color:#b84040">Tilkobling feilet.</em>','ai');}
+  landingLocked=false;document.getElementById('landingSendBtn').disabled=false;
+}
+function triggerDeeper(){
+  goScreen('advisory');
+  const context=landingMsgs.map(m=>`${m.role==='user'?'Bruker':'AI'}: ${m.content.replace(/<[^>]+>/g,'')}`).join('\n').slice(0,1000);
+  setTimeout(()=>{
+    advChatMsgs.push({role:'user',content:`Jeg har nettopp hatt denne samtalen og ønsker en dypere analyse:\n${context}\n\nFortsett der vi slapp og gi meg en full investeringsanalyse. Start med egnethetsvurdering.`});
+    advCall();
+  },400);
+}
+
+// Init landing
+setTimeout(()=>{
+  landingCall("Hei! Start samtalen med en varm velkomst på én setning. Still deretter umiddelbart det første spørsmålet: hvor mye penger snakker vi om — er det et engangsbeløp, månedlig sparing, eller begge? Be om konkrete tall. Vær direkte og uformell.");
+  setLandingQuick(["5 000 kr/mnd","10 000 kr/mnd","100 000 kr engangsbeløp","Jeg vet ikke ennå"]);
+},200);
+
+// ══════════════════════════════════════
+// ADVISORY CHAT (right panel)
+// ══════════════════════════════════════
+let advChatMsgs=[],advLocked=false;
+const ADV_SYSTEM=`Du er KapitalKompasset sin AI-rådgiver. Du fører en samtale for å kartlegge brukerens investeringsprofil, og oppdaterer grafen/analysen i sanntid.
+
+## Informasjon du trenger
+- Egnethet (erfaring/utdanning med kapitalmarkedet — ja/nei)
+- Tidshorisont (antall år)
+- Risikovilje: Ingen / Meget lav / Lav / Middels / Offensiv / Høy
+- Årslønn etter skatt (NOK)
+- Årlige utgifter (NOK)
+- Buffer (antall måneder utgifter de har spart opp)
+- Startkapital (NOK)
+- Månedlig sparing (NOK)
+
+## FORMATERING — følg disse reglene alltid
+- Bruk HTML i alle svar:
+  - Lister og alternativer: <ul><li>...</li></ul>
+  - Avsnittsskille mellom spørsmål og foregående svar: <br>
+  - Viktige begreper: <strong>ord</strong>
+- Hold hvert svar kort. Aldri lange avsnitt med sammenhengende tekst.
+- Maks én setning introduksjon, deretter liste eller direkte spørsmål.
+
+## QUICK-svar (obligatorisk — send alltid etter hvert svar)
+Etter hvert svar, send denne blokken med 2–5 svaralternativer tilpasset NØYAKTIG det du nettopp spurte om:
+[QUICK:["Alternativ 1","Alternativ 2","Alternativ 3"]]
+
+Eksempler:
+- Spurte om egnethet → [QUICK:["Ja, erfaring med fond/verdipapirer","Ja, finans/økonomiutdanning","Nei, nybegynner"]]
+- Spurte om markedsfall → [QUICK:["Selge alt","Selge noe","Vente og beholde","Kjøpe mer"]]
+- Spurte om investeringsmål → [QUICK:["Bevare verdiene","Moderat vekst","God vekst over tid","Maksimal avkastning"]]
+- Spurte om horisont → [QUICK:["Under 3 år","3–7 år","7–15 år","Ca. 20 år","Over 30 år"]]
+- Spurte om atferd/psykologi → [QUICK:["Sover dårlig ved svingninger","Bekymrer meg ved store fall","Komfortabel med svingninger","Plages ikke"]]
+- Spurte om risikovilje → [QUICK:["Lav","Middels","Offensiv","Høy"]]
+- Spurte om buffer → [QUICK:["Under 1 måned","1–2 måneder","3–6 måneder","Over 6 måneder"]]
+- Spurte om inntekt → [QUICK:["Ca. 400 000 kr","Ca. 600 000 kr","Ca. 800 000 kr","Over 1 million"]]
+- Spurte om utgifter → [QUICK:["Ca. 200 000 kr","Ca. 300 000 kr","Ca. 400 000 kr","Over 500 000 kr"]]
+- Spurte om startkapital → [QUICK:["Ingen startkapital","100 000 kr","300 000 kr","500 000 kr","Over 1 million"]]
+- Spurte om månedlig sparing → [QUICK:["Ingen","1 000 kr/mnd","3 000 kr/mnd","5 000 kr/mnd","10 000 kr/mnd"]]
+- Etter anbefaling → [QUICK:["Hva betyr dette i praksis?","Hva om jeg velger høyere risiko?","Juster tallene selv","Start på nytt"]]
+
+## Egnethetsvurdering (start alltid her)
+Spør om de har erfaring med fond eller verdipapirer ELLER relevant utdanning (finans/økonomi). Hvis nei: still fire atferdsspørsmål ett om gangen.
+Atferdsspørsmål skår: Selge alt=1, Selge noe=2, Vente=3, Kjøpe mer=4
+Totalskår: 4-5=Lav, 6-8=Middels, 9-12=Offensiv, 13-16=Høy
+
+## Kapasitetslogikk (brukes internt)
+- Sparerate = (inntekt - utgifter) / inntekt per mnd
+  >30%=100%, 20-30%=max 80%, 10-20%=max 65%, 5-10%=max 50%, <5%=max 35%
+- Buffer under 1 mnd: trekk 2 risikonivåer ned. 1-2 mnd: trekk 1 ned.
+Valgt risikovilje begrenses av kapasiteten. Advar tydelig ved overskridelse.
+
+## Allokeringsmatrise
+| Horisont  | Ingen | Meget lav | Lav | Middels | Offensiv | Høy  |
+|-----------|-------|-----------|-----|---------|----------|------|
+| < 1 år    | Bank  | Bank      | Bank| Bank    | Bank     | Bank |
+| 1–3 år    | Bank  | Bank      | 0%  | 20%     | 35%      | 50%  |
+| 3–7 år    | Bank  | 0%        | 20% | 35%     | 50%      | 65%  |
+| 7–15 år   | Bank  | 20%       | 35% | 50%     | 65%      | 80%  |
+| 15+ år    | Bank  | 35%       | 50% | 65%     | 80%      | 100% |
+
+## Grafikk-oppdatering
+Når du har nok info, send denne blokken (fyll inn reelle verdier, send QUICK-blokken etterpå):
+[RENDER:{"startCapital":0,"monthly":5000,"horizon":15,"income":600000,"expenses":350000,"bufferMonths":3,"costS":0.007,"costB":0.003,"riskLabel":"Offensiv"}]
+
+For horizon: bruk ALLTID øvre grense av et intervall — "7–15 år" → 15, "3–7 år" → 7, "over 15 år" → 20, "ca. 20 år" → 20.
+
+## Regler
+- Les brukerens svar nøye. Svar ALLTID på det de faktisk sier.
+- Hvis brukeren kun svarer på deler av et spørsmål: oppsummer det du forstod og spør om det som mangler.
+- Hold svar korte. Aldri mer enn ett spørsmål om gangen.
+- Advar tydelig ved risiko over kapasitet.
+- Norsk bokmål alltid.
+- Du KAN nevne eksempler på populære norske og nordiske fond for å gjøre anbefalingen mer konkret (f.eks. KLP AksjeVerden Indeks, DNB Global Indeks, Storebrand Indeks - Alle Markeder, Alfred Berg Nordisk, Holberg Likviditet). Men du MÅ aldri anbefale ett spesifikt fond fremfor et annet. Illustrative eksempler er ok.
+- Når du gir en endelig anbefaling, inkluder alltid ett konkret neste steg med kontotype og bank/plattform-eksempler:
+  * Aksjer ≥ 80% → anbefal ASK (Aksjesparekonto). Eks: Nordnet, Kron, DNB, eller din egen bank.
+  * Aksjer 20–80% (obligasjoner > 20%) → anbefal kombinasjonsfond med 80–90% aksjeandel i stedet for å splitte mellom ASK og fondskonto. Disse kvalifiserer for ASK og er enklere å administrere. Påpek at kombinasjonsfond ofte er aktivt forvaltet — brukeren bør se etter lav forvaltningsavgift (helst under 0,5%) og om mulig passiv forvaltning. Eks: Nordnet, Kron, Sbanken, eller din egen bank.
+  * Aksjer < 20% → anbefal høyrentekonto. Eks: Bulder Bank, Sbanken, Lunar, eller din egen bank.
+  * Hvis brukeren er ung (under ~34 år) og har inntekt: nevn BSU som første prioritet (20% skattefradrag, maks 31 500 kr/år innskudd).
+- Banker og plattformer nevnt i anbefalingen utløser automatisk en disclaimer i grensesnittet — du trenger ikke skrive den selv.`;
+
+// Fund AND bank/platform names — inject disclaimer when any appear
+const FUND_NAMES = [
+  // Funds
+  'KLP','DNB Global','DNB Indeks','Storebrand Indeks','Storebrand Global',
+  'Alfred Berg','Holberg','Nordnet Indeks','SKAGEN','Odin Fond','Eika',
+  'Handelsbanken Indeks','Fidelity','Vanguard','BlackRock','iShares','Xtrackers','Lyxor',
+  // Banks / platforms
+  'Nordnet','Sbanken','SpareBank','DNB Nettbank','Kron','Bulder','Lunar',
+  'Gjensidige','Sparebanken','Storebrand Bank','Handelsbanken'
+];
+const BANK_NAMES = ['Nordnet','Sbanken','SpareBank','Kron','Bulder','Lunar','Gjensidige','Sparebanken','Storebrand Bank'];
+
+function injectFundDisclaimer(el){
+  const text = el.textContent || '';
+  const hasFund = FUND_NAMES.some(f => text.includes(f));
+  if(hasFund && !el.querySelector('.fund-disclaimer')){
+    const note = document.createElement('div');
+    note.className = 'fund-disclaimer';
+    const hasBank = BANK_NAMES.some(b => text.includes(b));
+    note.innerHTML = hasBank
+      ? '⚠️ <strong>Merk:</strong> Fondene og bankene/plattformene nevnt ovenfor er kun illustrative eksempler på populære alternativer som passer til denne profilen — dette er <em>ikke</em> en anbefaling om å velge ett spesifikt produkt eller leverandør fremfor et annet. Kombinasjonsfond er ofte aktivt forvaltet — se etter lav forvaltningsavgift (helst under 0,5%) og vurder passivt forvaltede alternativer der det finnes. Gjør egne undersøkelser, eller kontakt din bank eller en uavhengig rådgiver.'
+      : '⚠️ <strong>Merk:</strong> Fondene nevnt ovenfor er kun illustrative eksempler på populære alternativer som passer til denne profilen — dette er <em>ikke</em> en anbefaling om å velge ett spesifikt fond fremfor et annet. Kombinasjonsfond er ofte aktivt forvaltet — se etter lav forvaltningsavgift (helst under 0,5%) og vurder passivt forvaltede alternativer der det finnes. Gjør egne undersøkelser, eller kontakt din bank eller en uavhengig rådgiver.';
+    el.appendChild(note);
+  }
+}
+
+function advAddBubble(html,role){
+  const processed = role==='ai' ? formatAIReply(html) : html;
+  const d=document.createElement('div');d.className=`bubble ${role}`;d.innerHTML=processed;
+  document.getElementById('advChatHistory').appendChild(d);
+  document.getElementById('advChatHistory').scrollTop=99999;
+  if(role==='ai') injectFundDisclaimer(d);
+  return d;
+}
+function advShowTyping(){const d=advAddBubble('<div class="typing-dots"><span></span><span></span><span></span></div>','ai');d.id='aTyping';}
+function advRemoveTyping(){const t=document.getElementById('aTyping');if(t)t.remove();}
+function setAdvQuick(opts){const a=document.getElementById('advQuickRow');a.innerHTML='';(opts||[]).forEach(label=>{const b=document.createElement('button');b.className='adv-qbtn';b.textContent=label;b.onclick=()=>{document.getElementById('advInput').value=label;advSend();};a.appendChild(b);});}
+
+async function advSend(){
+  if(advLocked)return;
+  const inp=document.getElementById('advInput');
+  const text=inp.value.trim();if(!text)return;
+  inp.value='';setAdvQuick([]);
+  advAddBubble(text,'user');
+  advChatMsgs.push({role:'user',content:text});
+  await advCall();
+}
+async function advCall(){
+  advLocked=true;document.getElementById('advSendBtn').disabled=true;
+  advShowTyping();
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:900,system:ADV_SYSTEM,messages:advChatMsgs})});
+    const data=await res.json();
+    advRemoveTyping();
+    if(data.error){advAddBubble(`<em style="color:#b84040">Feil: ${data.error.message}</em>`,'ai');}
+    else{
+      let reply=data.content.map(b=>b.text||'').join('');
+      // Extract RENDER block
+      const renderMatch=reply.match(/\[RENDER:(\{.*?\})\]/s);
+      if(renderMatch){
+        try{renderResults({...JSON.parse(renderMatch[1]),skipBanner:false});closeDrawer();}
+        catch(e){console.warn('render parse',e);}
+        reply=reply.replace(/\[RENDER:\{.*?\}\]/s,'').trim();
+      }
+      // Extract QUICK block — AI-specified quick replies
+      const quickMatch=reply.match(/\[QUICK:(\[.*?\])\]/s);
+      let quickOpts=null;
+      if(quickMatch){
+        try{quickOpts=JSON.parse(quickMatch[1]);}catch(e){console.warn('quick parse',e);}
+        reply=reply.replace(/\[QUICK:\[.*?\]\]/s,'').trim();
+      }
+      if(reply)advAddBubble(reply,'ai');
+      advChatMsgs.push({role:'assistant',content:data.content.map(b=>b.text||'').join('')});
+      if(quickOpts&&quickOpts.length) setAdvQuick(quickOpts);
+      else setAdvQuick(["Fortsett","Forklar mer","Jeg vil korrigere noe"]);
+    }
+  }catch(e){advRemoveTyping();advAddBubble('<em style="color:#b84040">Tilkobling feilet.</em>','ai');}
+  advLocked=false;document.getElementById('advSendBtn').disabled=false;
+}
+function initAdvChat(){
+  advChatMsgs=[];
+  advCall_seed("Hei! Presenter deg kort (1 setning) og still første spørsmål om egnethet: har brukeren erfaring med fond eller verdipapirer, eller relevant utdanning? Husk å inkludere [QUICK:...]-blokken.");
+}
+async function advCall_seed(seed){
+  advLocked=true;document.getElementById('advSendBtn').disabled=true;
+  advShowTyping();
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,system:ADV_SYSTEM,messages:[{role:'user',content:seed}]})});
+    const data=await res.json();
+    advRemoveTyping();
+    if(!data.error){
+      let reply=data.content.map(b=>b.text||'').join('');
+      reply=reply.replace(/\[RENDER:\{.*?\}\]/s,'').trim();
+      const quickMatch=reply.match(/\[QUICK:(\[.*?\])\]/s);
+      let quickOpts=null;
+      if(quickMatch){
+        try{quickOpts=JSON.parse(quickMatch[1]);}catch(e){}
+        reply=reply.replace(/\[QUICK:\[.*?\]\]/s,'').trim();
+      }
+      if(reply)advAddBubble(reply,'ai');
+      advChatMsgs.push({role:'assistant',content:data.content.map(b=>b.text||'').join('')});
+      if(quickOpts&&quickOpts.length) setAdvQuick(quickOpts);
+      else setAdvQuick(["Ja, jeg har erfaring","Ja, relevant utdanning","Nei, nybegynner"]);
+    }
+  }catch(e){advRemoveTyping();}
+  advLocked=false;document.getElementById('advSendBtn').disabled=false;
+}
+</script>
+</body>
+</html>
