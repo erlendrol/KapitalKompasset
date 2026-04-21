@@ -212,6 +212,10 @@ input[type=number]:focus{border-color:var(--teal);}
 .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;color:var(--ink-muted);padding:2rem;}
 .empty-state svg{opacity:0.25;margin-bottom:1rem;}
 
+/* buffer advisory note */
+.buffer-note{margin-top:10px;font-size:0.82rem;color:#1a4a1a;background:#e8f5e9;border:1.5px solid #81c784;border-radius:8px;padding:9px 12px;line-height:1.55;}
+.buffer-note strong{color:#1a4a1a;}
+
 /* fund disclaimer tag */
 .fund-disclaimer{display:block;margin-top:10px;font-size:0.78rem;color:#7a3a0a;background:#fff3e0;border:1.5px solid #e8a060;border-radius:8px;padding:9px 12px;line-height:1.55;}
 .fund-disclaimer strong{color:#7a3a0a;}
@@ -257,7 +261,7 @@ input[type=number]:focus{border-color:var(--teal);}
     <div class="landing-inner">
       <div class="landing-hero">
         <h1>Hva skal jeg gjøre<br>med pengene mine?</h1>
-        <p>Få et klart svar på under ett minutt — ingen jargon, ingen skjemaer.</p>
+        <p>Få et konkret svar på under ett minutt.<br>Ingen forkunnskap. Ingen registrering.</p>
       </div>
       <div id="landingMsgs"></div>
       <div id="landingQuick" class="quick-row"></div>
@@ -490,63 +494,52 @@ const PROFILES=[{name:"Forsiktig",stocks:0,bonds:1,color:"#5c7a9e"},{name:"Moder
 const RISK_SCORE={"Ingen":0,"Meget lav":1,"Lav":2,"Middels":3,"Offensiv":4,"Høy":5};
 const RISK_LABELS=["Ingen","Meget lav","Lav","Middels","Offensiv","Høy"];
 const ALLOC_TABLE=[["Bank","Bank","Bank","Bank","Bank","Bank"],["Bank","Bank",0,0.2,0.35,0.5],["Bank",0,0.2,0.35,0.5,0.65],["Bank",0.2,0.35,0.5,0.65,0.8],["Bank",0.35,0.5,0.65,0.8,1]];
-function hBucket(y){if(y<1)return 0;if(y<=3)return 1;if(y<=7)return 2;if(y<=15)return 3;return 4;}
+// Horizon buckets: <3yr=1, 3-7yr=2, 7-10yr=3 (step-down zone), 10+yr=4 (full allocation)
+function hBucket(y){if(y<1)return 0;if(y<=3)return 1;if(y<=7)return 2;if(y<=10)return 3;return 4;}
 
-// ── NEW CAPACITY LOGIC ──
-// savings_rate = monthly_surplus / net_income → caps max equity
-// buffer months from buffer input → further adjustment (brems)
-// Behavioral adjustment (from MC Q1) handled separately in risk profile only
+// ── CAPACITY LOGIC — aligned with long-term index fund philosophy ──
+// Only genuine risk factors cause a step-down:
+//   • Buffer < 1 month: -1 level (serious financial vulnerability)
+//   • Horizon 3–7 yr: -1 level via hBucket (already handled in ALLOC_TABLE)
+//   • Risk-averse behaviour (C): -1 level via riskMap
+// Savings rate no longer caps equity — it's not the right signal for index investors.
+// Buffer 1–2 months: no step-down, but we set a flag for an advisory note.
 function capacityFromInputs(income, expenses, bufferMonths){
-  const monthlySurplus = (income - expenses) / 12;
-  const savingsRate = income > 0 ? monthlySurplus / (income / 12) : 0;
-
-  // Step 1: base max equity from savings rate
-  let maxEquity;
-  if      (savingsRate > 0.30) maxEquity = 1.00;
-  else if (savingsRate > 0.20) maxEquity = 0.80;
-  else if (savingsRate > 0.10) maxEquity = 0.65;
-  else if (savingsRate > 0.05) maxEquity = 0.50;
-  else                         maxEquity = 0.35;
-
-  // Step 2: buffer brake
-  let bufferPenalty = 0;
-  if      (bufferMonths < 1) bufferPenalty = 2;
-  else if (bufferMonths < 2) bufferPenalty = 1;
-
-  // Convert maxEquity to risk level index, apply penalty, convert back
-  // Equity caps: 0=Ingen(Bank/0%), 1=Meget lav(0-20%), 2=Lav(20-35%), 3=Middels(35-50%), 4=Offensiv(50-80%), 5=Høy(80-100%)
-  const equityToLevel = (eq) => {
-    if (eq <= 0.20) return 1;
-    if (eq <= 0.35) return 2;
-    if (eq <= 0.50) return 3;
-    if (eq <= 0.80) return 4;
-    return 5;
-  };
-  const baseLevel = equityToLevel(maxEquity);
-  const cappedLevel = Math.max(0, baseLevel - bufferPenalty);
-
-  // label for display
-  const labels = ["Ingen","Lav","Lav","Middels","Offensiv","Høy"];
-  const capLabels = ["Ingen","Lav","Middels","God","Høy"];
-  // Map cappedLevel (0-5) to friendly display label (0-4)
+  // Only buffer < 1 month causes a hard step-down
+  const bufferPenalty = bufferMonths < 1 ? 1 : 0;
+  // bufferFlag for advisory note (1–2 months → suggest building buffer)
+  const bufferFlag = bufferMonths >= 1 && bufferMonths < 3 ? 'low' : bufferMonths < 1 ? 'critical' : 'ok';
+  // cappedLevel: without savings-rate cap, this is always max (5) minus buffer penalty
+  const cappedLevel = Math.max(0, 5 - bufferPenalty);
   const displayLevel = Math.min(4, cappedLevel);
   const displayLabels = ["Ingen","Lav","Middels","God","Høy"];
-
   return {
-    maxEquityFraction: maxEquity,
-    cappedLevel,       // 0-5 risk level index this person can handle
-    displayLevel,      // 0-4 for bar segments
+    cappedLevel,
+    displayLevel,
     label: displayLabels[displayLevel],
-    savingsRate,
-    monthlySurplus
+    bufferFlag,    // 'ok' | 'low' | 'critical'
+    savingsRate: income > 0 ? ((income-expenses)/12)/(income/12) : 0,
+    monthlySurplus: (income-expenses)/12
   };
 }
 
-// Apply capacity cap to a chosen risk label — hard limit
+// Apply capacity cap — hard limit only when genuinely warranted
 function applyCapacity(riskLabel, cap){
   const chosen = RISK_SCORE[riskLabel] ?? 3;
   const capped = Math.min(chosen, cap.cappedLevel);
   return RISK_LABELS[capped];
+}
+
+// Generate buffer advisory note (shown alongside recommendation, not instead of it)
+function bufferAdvisoryNote(bufferFlag, monthly){
+  if(bufferFlag==='critical'){
+    return `<div class="buffer-note">⚠️ <strong>Viktig:</strong> Du har nesten ingen buffer. Bygg opp minst 1–2 måneder med utgifter i en høyrentekonto før du starter å investere — du trenger et sikkerhetsnett for uventede utgifter.</div>`;
+  }
+  if(bufferFlag==='low'){
+    const extra = monthly>0 ? ` Vurder å sette av ${fmt(Math.round(monthly*0.3))} av sparingen til buffer til du har 3 måneder.` : ' Prøv å bygge bufferen til 3 måneder utgifter parallelt med sparingen.';
+    return `<div class="buffer-note">💡 <strong>Buffertips:</strong> Du har 1–2 måneder buffer — det er OK å starte, men vi anbefaler å bygge den opp til 3 måneder.${extra}</div>`;
+  }
+  return '';
 }
 
 function profForAlloc(s){let b=PROFILES[0],bd=1e9;for(const p of PROFILES){const d=Math.abs(p.stocks-s);if(d<bd){bd=d;b=p;}}return b;}
@@ -842,18 +835,20 @@ function bufKey(m){if(m<1)return'L';if(m<3)return'M';return'H';}
 // risk behaviour from MC Q1 score (1=cautious,2=neutral,3-4=aggressive)
 function riskChar(score){if(score<=1)return'C';if(score<=2)return'N';return'A';}
 
-function buildRecHTML(engKey, hKey, bKey, rChar, bufNote, horizNote){
+function buildRecHTML(engKey, hKey, bKey, rChar, bufferNoteHTML, horizNote, pAllocPct){
   const stepsArr = ENG.steps[engKey]||ENG.steps['50'];
   const steps = stepsArr.map(s=>`<li>${s}</li>`).join('');
-  const bNote = bKey==='H'?'':ENG.bufferNotes[bKey]?`<li><strong>${ENG.bufferNotes[bKey]}</strong></li>`:'';
+  const allocLine = pAllocPct!==undefined
+    ? `${pAllocPct}% aksjer · ${ENG.products[engKey]}`
+    : ENG.products[engKey];
   const disclaimer = `<div class="fund-disclaimer">⚠️ <strong>Merk:</strong> Bankene og plattformene nevnt ovenfor er illustrative eksempler — ikke en anbefaling om å velge én fremfor en annen. Kombinasjonsfond er ofte aktivt forvaltet — se etter lav forvaltningsavgift (helst under 0,5%) og vurder passivt forvaltede alternativer der det finnes. Gjør egne undersøkelser eller kontakt din bank.</div>`;
   return `<div class="rec-box">
 <div class="rec-title">💡 Min anbefaling</div>
-<div class="alloc-line">${ENG.products[engKey]}</div>
-<ul>${bNote}${steps}</ul>
+<div class="alloc-line">${allocLine}</div>
+<ul>${steps}</ul>
 <div class="next-step">📋 <strong>Slik kommer du i gang:</strong> ${ENG.nextSteps[engKey]}</div>
 <div class="flip-note">🔄 ${ENG.flipNotes[engKey]}</div>
-</div>${disclaimer}`;
+</div>${bufferNoteHTML}${disclaimer}`;
 }
 
 // ══════════════════════════════════════
@@ -932,10 +927,11 @@ const LANDING_QUESTIONS = [
   // Step 4: risk comfort
   {
     ask: '<span class="ai-question">Siste spørsmål: hvis investeringen din falt 20% på ett år — hva ville du gjøre?</span>',
-    quick: ['Selge alt — det er for mye risiko','Holde på og vente','Kjøpe mer mens det er billig'],
+    quick: ['Selge alt — for mye risiko','Selge noe for å redusere risiko','Holde på og vente','Kjøpe mer mens det er billig'],
     parse(txt){
       const t=txt.toLowerCase();
       if(t.includes('selge alt')||t.includes('for mye')){collectedState.riskComfort='C';collectedState.q1Score=1;}
+      else if(t.includes('selge noe')||t.includes('redusere')){collectedState.riskComfort='S';collectedState.q1Score=2;}
       else if(t.includes('kjøpe mer')||t.includes('billig')){collectedState.riskComfort='A';collectedState.q1Score=4;}
       else{collectedState.riskComfort='N';collectedState.q1Score=3;}
     }
@@ -1010,7 +1006,7 @@ function deliverLandingRec(){
   // Compute equity allocation
   const cap=capacityFromInputs(collectedState.income||500000,collectedState.expenses||300000,collectedState.bufferMonths);
   // Map risk comfort to riskLabel
-  const riskMap={'C':'Lav','N':'Middels','A':'Offensiv'};
+  const riskMap={'C':'Lav','N':'Høy','A':'Høy','S':'Offensiv'};
   const riskLabel=riskMap[collectedState.riskComfort]||'Middels';
   const ar=applyCapacity(riskLabel,cap);
   const alloc=ALLOC_TABLE[hBucket(collectedState.horizon)][RISK_SCORE[ar]??3];
@@ -1030,7 +1026,8 @@ function deliverLandingRec(){
     debtNote=`<br><strong>Merk om gjeld:</strong> Med en rente på ${(collectedState.mortgageRate*100).toFixed(0)}% er det sannsynlig at nedbetaling av gjeld gir bedre netto avkastning enn investering. Vurder å prioritere gjelden.`;
   }
 
-  const recHTML=`${title} ${horizNote}${debtNote}<br><br>${buildRecHTML(engKey,hKey,bKey,collectedState.riskComfort,'','')}`;
+  const bufNote = bufferAdvisoryNote(cap.bufferFlag, collectedState.monthly);
+  const recHTML=`${title} ${horizNote}${debtNote}<br><br>${buildRecHTML(engKey,hKey,bKey,collectedState.riskComfort,bufNote,'',Math.round(pAlloc*100))}`;
   landingAddBubble(recHTML,'ai');
 
   // Render chart
@@ -1066,37 +1063,103 @@ setTimeout(()=>initLanding(),200);
 // ══════════════════════════════════════
 // ADVISORY CHAT — FIXED QUESTION FLOW
 // ══════════════════════════════════════
+// 9 steps total: suitability → 4 MC risk questions → horizon → income/expenses → buffer → capital
 let advStep=0;
 let advLocked=false;
-let advAskedDebtRate=false;
+let advMCScores=[];  // accumulate 4 MC question scores
 
-// Same 5 questions as landing but phrased for the advisory context
 const ADV_QUESTIONS=[
+  // Step 0: suitability
   {
     ask:'Hei! Jeg er her for å hjelpe deg med en grundigere analyse. 📊<br><br><span class="ai-question">Har du erfaring med fond eller verdipapirer, eller relevant utdanning innen finans eller økonomi?</span>',
     quick:['Ja, erfaring med fond','Ja, finans-/økonomiutdanning','Nei, nybegynner'],
-    parse(txt){/* suitability — stored but not blocking */}
+    parse(txt){/* suitability noted but flow continues regardless */}
   },
+  // Steps 1–4: MC risk battery (4 questions)
   {
-    ask:'<span class="ai-question">Hva er din investeringshorisont — altså ca. når planlegger du å bruke pengene?</span>',
-    quick:['Under 3 år','3–7 år','7–15 år','Over 15 år','Ca. 20 år','Over 30 år'],
-    parse(txt){LANDING_QUESTIONS[3].parse(txt);}  // reuse landing parser
-  },
-  {
-    ask:'<span class="ai-question">Hva er din årslønn etter skatt, og hva er de omtrentlige årlige utgiftene dine?</span><br>Dette brukes til å beregne din evne til å tåle svingninger.',
-    quick:['Lønn 400k, utgifter 250k','Lønn 600k, utgifter 350k','Lønn 800k, utgifter 450k','Over 1 million i lønn'],
+    ask:'For å finne din risikovilje stiller jeg deg fire raske spørsmål.<br><br><span class="ai-question">Spørsmål 1: Hvis porteføljen din falt 20% på tre måneder — hva ville du gjøre?</span>',
+    quick:['Selge alt umiddelbart','Selge noe for å redusere risiko','Beholde og vente på bedring','Kjøpe mer mens prisene er lave'],
     parse(txt){
-      const nums=txt.match(/\d[\d\s]*/g)||[];
-      const vals=nums.map(n=>+n.replace(/\s/g,'')).filter(n=>n>1000).sort((a,b)=>b-a);
-      if(vals.length>=2){collectedState.income=vals[0];collectedState.expenses=vals[1];}
-      else if(vals.length===1)collectedState.income=vals[0];
+      const t=txt.toLowerCase();
+      let s=2;
+      if(t.includes('selge alt'))s=1;
+      else if(t.includes('selge noe'))s=2;
+      else if(t.includes('beholde')||t.includes('vente'))s=3;
+      else if(t.includes('kjøpe mer'))s=4;
+      advMCScores[0]=s;
     }
   },
+  {
+    ask:'<span class="ai-question">Spørsmål 2: Hva er ditt primære mål med investeringen?</span>',
+    quick:['Bevare verdiene','Moderat vekst, begrenset risiko','God vekst, tåler svingninger','Maksimal langsiktig avkastning'],
+    parse(txt){
+      const t=txt.toLowerCase();
+      let s=2;
+      if(t.includes('bevare'))s=1;
+      else if(t.includes('moderat'))s=2;
+      else if(t.includes('god vekst'))s=3;
+      else if(t.includes('maksimal'))s=4;
+      advMCScores[1]=s;
+    }
+  },
+  {
+    ask:'<span class="ai-question">Spørsmål 3: Hvor lenge planlegger du å la pengene stå?</span>',
+    quick:['Under 3 år','3–7 år','7–15 år','Over 15 år'],
+    parse(txt){
+      const t=txt.toLowerCase();
+      let s=2;
+      if(t.includes('under 3')||t.includes('1')||t.includes('2'))s=1;
+      else if(t.includes('3')||t.includes('7'))s=2;
+      else if(t.includes('15'))s=3;
+      else if(t.includes('over')||t.includes('20')||t.includes('30'))s=4;
+      advMCScores[2]=s;
+      // Also set horizon from this answer
+      LANDING_QUESTIONS[3].parse(txt);
+    }
+  },
+  {
+    ask:'<span class="ai-question">Spørsmål 4: Hvilken setning passer deg best?</span>',
+    quick:['Jeg sover dårlig hvis investeringene svinger','Jeg tåler litt uro, men bekymrer meg ved store fall','Komfortabel med svingninger på vei mot målet','Svingninger plager meg ikke — jeg tenker langsiktig'],
+    parse(txt){
+      const t=txt.toLowerCase();
+      let s=2;
+      if(t.includes('sover dårlig'))s=1;
+      else if(t.includes('litt uro')||t.includes('bekymrer'))s=2;
+      else if(t.includes('komfortabel'))s=3;
+      else if(t.includes('plager meg ikke')||t.includes('langsiktig'))s=4;
+      advMCScores[3]=s;
+      // Compute riskComfort from total MC score
+      // Score range: 4 (all 1s) to 16 (all 4s)
+      // 4     = C (selge alt in every answer — two steps down)
+      // 5-6   = S (selge noe tendency — one step down)
+      // 7-11  = N (hold steady — full allocation, rational long-term)
+      // 12-16 = A (buy more — full allocation)
+      const total=(advMCScores[0]||2)+(advMCScores[1]||2)+(advMCScores[2]||2)+s;
+      if(total<=4)collectedState.riskComfort='C';
+      else if(total<=6)collectedState.riskComfort='S';
+      else if(total<=11)collectedState.riskComfort='N';
+      else collectedState.riskComfort='A';
+    }
+  },
+  // Step 5: income/expenses
+  {
+    ask:'<span class="ai-question">Hva er din årslønn etter skatt, og hva er de omtrentlige årlige utgiftene dine?</span><br>Dette brukes til å beregne din evne til å tåle svingninger.',
+    quick:['Lønn 400 000, utgifter 250 000','Lønn 600 000, utgifter 350 000','Lønn 800 000, utgifter 450 000','Over 1 000 000 i lønn'],
+    parse(txt){
+      // Handle both "400k" and "400 000" formats
+      const normalised = txt.replace(/(\d+)\s*k\b/gi, (m,n)=>String(+n*1000));
+      const nums=(normalised.match(/\d[\d\s]*/g)||[]).map(n=>+n.replace(/\s/g,'')).filter(n=>n>1000).sort((a,b)=>b-a);
+      if(nums.length>=2){collectedState.income=nums[0];collectedState.expenses=nums[1];}
+      else if(nums.length===1)collectedState.income=nums[0];
+    }
+  },
+  // Step 6: buffer
   {
     ask:'<span class="ai-question">Hvor mange måneder utgifter har du som buffer — lett tilgjengelig om noe uventet skjer?</span>',
     quick:['Under 1 måned','1–2 måneder','3–6 måneder','Over 6 måneder'],
     parse(txt){LANDING_QUESTIONS[1].parse(txt);}
   },
+  // Step 7: capital / savings
   {
     ask:'<span class="ai-question">Hva er startkapitalen og/eller månedlig sparing du planlegger?</span>',
     quick:['Ingen startkapital','100 000 kr','500 000 kr','5 000 kr/mnd','10 000 kr/mnd'],
@@ -1124,7 +1187,7 @@ function setAdvQuick(opts){
 }
 
 function initAdvChat(){
-  advStep=0;advAskedDebtRate=false;
+  advStep=0;advMCScores=[];
   document.getElementById('advChatHistory').innerHTML='';
   document.getElementById('advQuickRow').innerHTML='';
   setTimeout(()=>{
@@ -1146,13 +1209,23 @@ function advSend(){
   advStep++;
 
   setTimeout(()=>{
-    if(advStep<ADV_QUESTIONS.length){
+    // After step 4 (last MC question), show a brief acknowledgment before financial questions
+    if(advStep===5){
+      const riskLabel={'C':'forsiktig — du foretrekker å selge alt ved fall','S':'noe forsiktig — du ville solgt noe ved store fall','N':'langsiktig — du holder fast ved markedsfall','A':'offensiv — du ville kjøpt mer ved fall'}[collectedState.riskComfort]||'balansert';
+      advAddBubble(`Takk — du har en <strong>${riskLabel}</strong> profil. Nå tar jeg deg gjennom noen raske spørsmål om din finansielle situasjon.`,'ai');
+      setTimeout(()=>{
+        advAddBubble(ADV_QUESTIONS[advStep].ask,'ai');
+        setAdvQuick(ADV_QUESTIONS[advStep].quick);
+        advLocked=false;
+      },600);
+    } else if(advStep<ADV_QUESTIONS.length){
       advAddBubble(ADV_QUESTIONS[advStep].ask,'ai');
       setAdvQuick(ADV_QUESTIONS[advStep].quick);
+      advLocked=false;
     } else {
       deliverAdvRec();
+      advLocked=false;
     }
-    advLocked=false;
   },400);
 }
 
@@ -1160,7 +1233,7 @@ function deliverAdvRec(){
   const inc=collectedState.income||600000;
   const exp=collectedState.expenses||350000;
   const cap=capacityFromInputs(inc,exp,collectedState.bufferMonths);
-  const riskMap={'C':'Lav','N':'Middels','A':'Offensiv'};
+  const riskMap={'C':'Lav','N':'Høy','A':'Høy','S':'Offensiv'};
   const riskLabel=riskMap[collectedState.riskComfort]||'Middels';
   const ar=applyCapacity(riskLabel,cap);
   const alloc=ALLOC_TABLE[hBucket(collectedState.horizon)][RISK_SCORE[ar]??3];
@@ -1170,7 +1243,8 @@ function deliverAdvRec(){
   const bKey=bufKey(collectedState.bufferMonths);
   const title=ENG.titles[engKey]?.[collectedState.riskComfort]||ENG.titles[engKey]?.N||'';
   const horizNote=ENG.horizonNotes[hKey]||'';
-  advAddBubble(`${title} ${horizNote}<br><br>${buildRecHTML(engKey,hKey,bKey,collectedState.riskComfort,'','')}`, 'ai');
+  const bufNote = bufferAdvisoryNote(cap.bufferFlag, collectedState.monthly);
+  advAddBubble(`${title} ${horizNote}<br><br>${buildRecHTML(engKey,hKey,bKey,collectedState.riskComfort,bufNote,'',Math.round(pAlloc*100))}`, 'ai');
   // Trigger chart render
   renderResults({
     startCapital:collectedState.lumpSum||0,
