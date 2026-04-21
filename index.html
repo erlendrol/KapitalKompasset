@@ -75,27 +75,73 @@ header{background:var(--ink);color:white;padding:0 2rem;height:56px;display:flex
 .send-btn:disabled{background:var(--ink-muted);cursor:not-allowed;}
 
 /* ══════════════════════════════════════
-   SCREEN 2: ADVISORY TOOL
+   SCREEN 2: ADVISORY TOOL — MODE LAYOUT
 ══════════════════════════════════════ */
 #screenAdvisory{display:flex;flex-direction:column;}
 .advisory-body{flex:1;display:flex;overflow:hidden;position:relative;}
 
-/* DRAWER SIDEBAR */
-.drawer-toggle{position:absolute;left:0;top:50%;transform:translateY(-50%);z-index:50;background:var(--ink);color:white;border:none;border-radius:0 8px 8px 0;padding:10px 8px;cursor:pointer;box-shadow:2px 0 10px rgba(0,0,0,0.15);transition:left 0.3s,background 0.2s;display:flex;flex-direction:column;align-items:center;gap:5px;writing-mode:vertical-rl;}
-.drawer-toggle:hover{background:var(--teal);}
-.drawer-toggle .toggle-label{font-family:'DM Sans',sans-serif;font-size:0.65rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:rgba(255,255,255,0.85);}
-.drawer-toggle svg{display:block;transition:transform 0.3s;flex-shrink:0;}
-.drawer{width:320px;min-width:320px;background:white;border-right:1px solid var(--cream-dark);overflow-y:auto;padding:1.5rem 1.25rem;flex-shrink:0;margin-left:-320px;transition:margin-left 0.3s;position:relative;z-index:40;}
-.drawer.open{margin-left:0;}
-.advisory-body.drawer-open .drawer-toggle{left:320px;}
-.advisory-body.drawer-open .drawer-toggle svg{transform:rotate(180deg);}
+/* MODE CHOOSER — shown on first entry */
+.mode-chooser{position:absolute;inset:0;z-index:200;background:var(--cream);display:flex;align-items:center;justify-content:center;}
+.mode-chooser.hidden{display:none!important;}
+.mode-chooser-card{background:white;border-radius:20px;padding:2.5rem 2rem;max-width:480px;width:90%;box-shadow:var(--shadow-lg,0 8px 40px rgba(26,26,46,0.14));text-align:center;}
+.mode-chooser-card h2{font-family:'DM Serif Display',serif;font-size:1.4rem;margin-bottom:0.5rem;}
+.mode-chooser-card p{font-size:0.9rem;color:var(--ink-muted);margin-bottom:1.75rem;line-height:1.6;}
+.mode-chooser-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+.mode-choice-btn{flex:1;min-width:160px;border:2px solid var(--cream-dark);background:white;border-radius:14px;padding:1.1rem 1rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s;text-align:center;}
+.mode-choice-btn:hover{border-color:var(--teal);background:var(--teal-light);}
+.mode-choice-btn .mcb-icon{font-size:1.8rem;margin-bottom:6px;}
+.mode-choice-btn .mcb-label{font-weight:600;font-size:0.9rem;color:var(--ink);display:block;margin-bottom:3px;}
+.mode-choice-btn .mcb-sub{font-size:0.75rem;color:var(--ink-muted);}
 
-/* ADVISORY MAIN AREA — split: results left, chat right */
-.advisory-main{flex:1;display:flex;overflow:hidden;}
-.advisory-results{flex:1;overflow-y:auto;padding:1.75rem 2rem;}
-.advisory-chat-panel{width:340px;min-width:340px;border-left:1px solid var(--cream-dark);display:flex;flex-direction:column;background:white;}
+/* MODE SWITCH BAR — shown when inside a mode */
+.mode-switch-bar{background:white;border-bottom:1px solid var(--cream-dark);padding:0.5rem 1.25rem;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.mode-switch-bar.hidden{display:none!important;}
+.mode-switch-pill{border:1.5px solid var(--cream-dark);background:white;color:var(--ink-muted);padding:5px 14px;border-radius:50px;font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;transition:all 0.15s;}
+.mode-switch-pill.active{background:var(--teal);border-color:var(--teal);color:white;}
+.mode-switch-bar span{font-size:0.78rem;color:var(--ink-muted);}
 
-/* ── DRAWER FORM STYLES ── */
+/* LEFT PANEL — AI chat or manual form, fixed width */
+.adv-left-panel{width:360px;min-width:360px;flex-shrink:0;background:white;border-right:1px solid var(--cream-dark);display:flex;flex-direction:column;overflow:hidden;transition:width 0.3s;}
+.adv-left-panel.hidden-panel{width:0;min-width:0;border:none;overflow:hidden;}
+
+/* RESULTS — takes all remaining space */
+.advisory-results{flex:1;overflow-y:auto;padding:1.75rem 2rem;min-width:0;}
+
+/* AI CHAT inside left panel */
+.adv-chat-history{flex:1;overflow-y:auto;padding:1.25rem 1rem;display:flex;flex-direction:column;gap:0.9rem;}
+.adv-chat-history .bubble{max-width:92%;}
+.adv-chat-history .bubble.ai{font-size:0.85rem;}
+.adv-chat-history .bubble.user{font-size:0.85rem;}
+.adv-quick-row{padding:0.4rem 1rem 0;display:flex;flex-wrap:wrap;gap:5px;}
+.adv-qbtn{background:white;border:1.5px solid var(--cream-dark);border-radius:50px;padding:5px 11px;font-size:0.76rem;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--ink-soft);font-weight:500;transition:all 0.15s;}
+.adv-qbtn:hover{background:var(--teal-light);border-color:var(--teal);color:var(--teal);}
+.adv-input-area{padding:0.75rem 1rem;background:white;border-top:1px solid var(--cream-dark);display:flex;gap:8px;}
+.adv-input{flex:1;border:1.5px solid var(--cream-dark);border-radius:50px;padding:8px 14px;font-family:'DM Sans',sans-serif;font-size:0.85rem;outline:none;transition:border-color 0.15s;}
+.adv-input:focus{border-color:var(--teal);}
+.adv-send{background:var(--ink);color:white;border:none;border-radius:50px;padding:8px 16px;font-family:'DM Sans',sans-serif;font-size:0.8rem;font-weight:500;cursor:pointer;transition:background 0.15s;white-space:nowrap;}
+.adv-send:hover{background:var(--teal);}
+.adv-send:disabled{background:var(--ink-muted);cursor:not-allowed;}
+.adv-panel-header{padding:0.9rem 1rem;border-bottom:1px solid var(--cream-dark);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.adv-panel-header span{font-weight:600;font-size:0.85rem;}
+.adv-panel-header .ai-dot{width:7px;height:7px;background:#4caf50;border-radius:50%;display:inline-block;margin-right:5px;}
+
+/* MANUAL FORM inside left panel — scrollable */
+.manual-form-panel{flex:1;overflow-y:auto;padding:1.25rem;}
+
+/* MOBILE — stack vertically */
+@media(max-width:680px){
+  .advisory-body{flex-direction:column;}
+  .adv-left-panel{width:100%!important;min-width:0;max-height:55vh;border-right:none;border-bottom:1px solid var(--cream-dark);}
+  .advisory-results{padding:1rem;}
+  .info-cards{grid-template-columns:1fr 1fr!important;}
+  .chart-wrap{height:220px!important;}
+  .mode-chooser-card{padding:1.75rem 1.25rem;}
+  .mode-chooser-btns{flex-direction:column;}
+  .mode-choice-btn{min-width:0;}
+  .result-header{flex-direction:column;}
+}
+
+/* ── DRAWER/FORM STYLES — shared ── */
 .section-title{font-family:'DM Serif Display',serif;font-size:0.9rem;color:var(--ink-soft);margin-bottom:0.9rem;padding-bottom:0.4rem;border-bottom:1px solid var(--cream-dark);display:flex;align-items:center;gap:8px;}
 .section-title .num{width:19px;height:19px;background:var(--gold);color:white;border-radius:50%;font-size:0.68rem;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;font-weight:600;flex-shrink:0;}
 .form-group{margin-bottom:1.25rem;}
@@ -166,24 +212,6 @@ input[type=number]:focus{border-color:var(--teal);}
 .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;color:var(--ink-muted);padding:2rem;}
 .empty-state svg{opacity:0.25;margin-bottom:1rem;}
 
-/* ── ADVISORY CHAT PANEL ── */
-.adv-chat-history{flex:1;overflow-y:auto;padding:1.25rem 1rem;display:flex;flex-direction:column;gap:0.9rem;}
-.adv-chat-history .bubble{max-width:90%;}
-.adv-chat-history .bubble.ai{font-size:0.85rem;}
-.adv-chat-history .bubble.user{font-size:0.85rem;}
-.adv-quick-row{padding:0.4rem 1rem 0;display:flex;flex-wrap:wrap;gap:5px;}
-.adv-qbtn{background:white;border:1.5px solid var(--cream-dark);border-radius:50px;padding:5px 11px;font-size:0.76rem;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--ink-soft);font-weight:500;transition:all 0.15s;}
-.adv-qbtn:hover{background:var(--teal-light);border-color:var(--teal);color:var(--teal);}
-.adv-input-area{padding:0.75rem 1rem;background:white;border-top:1px solid var(--cream-dark);display:flex;gap:8px;}
-.adv-input{flex:1;border:1.5px solid var(--cream-dark);border-radius:50px;padding:8px 14px;font-family:'DM Sans',sans-serif;font-size:0.85rem;outline:none;transition:border-color 0.15s;}
-.adv-input:focus{border-color:var(--teal);}
-.adv-send{background:var(--ink);color:white;border:none;border-radius:50px;padding:8px 16px;font-family:'DM Sans',sans-serif;font-size:0.8rem;font-weight:500;cursor:pointer;transition:background 0.15s;white-space:nowrap;}
-.adv-send:hover{background:var(--teal);}
-.adv-send:disabled{background:var(--ink-muted);cursor:not-allowed;}
-.adv-chat-header{padding:0.9rem 1rem;border-bottom:1px solid var(--cream-dark);display:flex;align-items:center;justify-content:space-between;}
-.adv-chat-header span{font-weight:600;font-size:0.85rem;}
-.adv-chat-header .ai-dot{width:7px;height:7px;background:#4caf50;border-radius:50%;display:inline-block;margin-right:5px;}
-
 /* fund disclaimer tag */
 .fund-disclaimer{display:block;margin-top:10px;font-size:0.78rem;color:#7a3a0a;background:#fff3e0;border:1.5px solid #e8a060;border-radius:8px;padding:9px 12px;line-height:1.55;}
 .fund-disclaimer strong{color:#7a3a0a;}
@@ -246,211 +274,41 @@ input[type=number]:focus{border-color:var(--teal);}
      SCREEN 2: ADVISORY TOOL
 ══════════════════════════════════════ -->
 <div class="screen" id="screenAdvisory">
+  <!-- MODE CHOOSER — shown on first entry -->
+  <div class="mode-chooser" id="modeChooser">
+    <div class="mode-chooser-card">
+      <h2>Dybdeanalyse</h2>
+      <p>Vil du at jeg tar deg gjennom spørsmålene, eller vil du svare på dem selv?</p>
+      <div class="mode-chooser-btns">
+        <button class="mode-choice-btn" onclick="chooseMode('ai')">
+          <div class="mcb-icon">🤖</div>
+          <span class="mcb-label">Ta meg gjennom det</span>
+          <span class="mcb-sub">AI-rådgiveren stiller spørsmålene</span>
+        </button>
+        <button class="mode-choice-btn" onclick="chooseMode('manual')">
+          <div class="mcb-icon">✏️</div>
+          <span class="mcb-label">Jeg svarer selv</span>
+          <span class="mcb-sub">Fyll inn skjemaet selv</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODE SWITCH BAR — shown after mode is chosen -->
+  <div class="mode-switch-bar hidden" id="modeSwitchBar">
+    <span>Modus:</span>
+    <button class="mode-switch-pill active" id="pillAI" onclick="switchMode('ai')">🤖 AI-rådgiver</button>
+    <button class="mode-switch-pill" id="pillManual" onclick="switchMode('manual')">✏️ Manuell</button>
+  </div>
+
   <div class="advisory-body" id="advisoryBody">
 
-    <!-- DRAWER TOGGLE -->
-    <button class="drawer-toggle" id="drawerToggle" onclick="toggleDrawer()" title="Manuell inndata">
-      <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
-        <polyline points="9,2 4,7 9,12"/>
-      </svg>
-      <span class="toggle-label">Manuell</span>
-    </button>
+    <!-- LEFT PANEL — AI chat or manual form -->
+    <div class="adv-left-panel" id="advLeftPanel">
 
-    <!-- DRAWER SIDEBAR -->
-    <div class="drawer" id="drawer">
-      <!-- SUITABILITY -->
-      <div class="form-group">
-        <div class="section-title"><span class="num">1</span>Egnethetsvurdering</div>
-        <label class="form-label">Kunnskap og erfaring</label>
-        <div class="pill-group" id="suitGroup">
-          <button class="pill" data-val="experience" onclick="selectPill(this,'suitGroup');updateSuit()">Erfaring med fond/verdipapirer</button>
-          <button class="pill" data-val="education" onclick="selectPill(this,'suitGroup');updateSuit()">Relevant utdanning</button>
-          <button class="pill active teal" data-val="questions" onclick="selectPill(this,'suitGroup');updateSuit()">Usikker — svar på spørsmål</button>
-          <button class="pill" data-val="none" onclick="selectPill(this,'suitGroup');updateSuit()">Ingen erfaring</button>
-        </div>
-
-        <!-- Info for experienced users: collapsible -->
-        <div id="suitInfoExpert" class="hidden">
-          <span class="lesMer" onclick="toggleLesMer()">Les mer om hva profilene innebærer ▾</span>
-          <div id="lesMerContent" class="info-box hidden">
-            <ul>
-              <li><strong>Verdipapirer</strong> er finansielle instrumenter som aksjer og obligasjoner. En aksje gir deg eierandel i et selskap. En obligasjon er et lån du gir til et selskap eller en stat.</li>
-              <li><strong>Risiko</strong> betyr at verdien på investeringen kan gå opp og ned. Høyere potensiell avkastning innebærer som regel høyere risiko for tap.</li>
-              <li><strong>Kostnader</strong> spiser direkte av avkastningen din. 1% i kostnad kan over 20 år redusere sluttbeløpet med 15–20%.</li>
-            </ul>
-          </div>
-        </div>
-
-        <!-- Info for inexperienced: always shown -->
-        <div id="suitInfoNone" class="info-box hidden">
-          <strong style="color:var(--teal);font-size:0.82rem;">Godt å vite før du starter:</strong>
-          <ul>
-            <li><strong>Verdipapirer</strong> er aksjer og obligasjoner. En aksje gir deg eierandel i et selskap og kan gi høy avkastning — men også store tap. En obligasjon er tryggere, men gir lavere avkastning.</li>
-            <li><strong>Risiko</strong> betyr svingninger i verdi. Jo mer risiko du tar, jo større kan gevinsten bli — men du kan også tape mer. Lang tidshorisont reduserer risikoen betraktelig.</li>
-            <li><strong>Kostnader</strong> trekkes automatisk fra avkastningen din. 0,5% i kostnad kan høres lite ut, men over 20 år kan det utgjøre hundretusener i tapt verdi.</li>
-          </ul>
-        </div>
-
-        <!-- MC questions -->
-        <div id="mcBlock" style="margin-top:0.75rem;">
-          <div style="font-size:0.75rem;color:var(--ink-muted);margin-bottom:0.6rem;">Svar på spørsmålene for å fastsette din risikovilje:</div>
-          <div class="mc-q">
-            <p>1. Hvis porteføljen falt 20% på tre måneder, hva ville du gjøre?</p>
-            <div class="mc-opt" data-q="1" data-score="1" onclick="selectMC(this)">Selge alt umiddelbart</div>
-            <div class="mc-opt" data-q="1" data-score="2" onclick="selectMC(this)">Selge noe for å redusere risiko</div>
-            <div class="mc-opt" data-q="1" data-score="3" onclick="selectMC(this)">Beholde og vente på bedring</div>
-            <div class="mc-opt" data-q="1" data-score="4" onclick="selectMC(this)">Kjøpe mer mens prisene er lave</div>
-          </div>
-          <div class="mc-q">
-            <p>2. Hva er ditt primære mål med investeringen?</p>
-            <div class="mc-opt" data-q="2" data-score="1" onclick="selectMC(this)">Bevare verdiene</div>
-            <div class="mc-opt" data-q="2" data-score="2" onclick="selectMC(this)">Moderat vekst, begrenset risiko</div>
-            <div class="mc-opt" data-q="2" data-score="3" onclick="selectMC(this)">God vekst, tåler svingninger</div>
-            <div class="mc-opt" data-q="2" data-score="4" onclick="selectMC(this)">Maksimal langsiktig avkastning</div>
-          </div>
-          <div class="mc-q">
-            <p>3. Hva er din investeringshorisont?</p>
-            <div class="mc-opt" data-q="3" data-score="1" onclick="selectMC(this)">Under 3 år</div>
-            <div class="mc-opt" data-q="3" data-score="2" onclick="selectMC(this)">3–7 år</div>
-            <div class="mc-opt" data-q="3" data-score="3" onclick="selectMC(this)">7–15 år</div>
-            <div class="mc-opt" data-q="3" data-score="4" onclick="selectMC(this)">Over 15 år</div>
-          </div>
-          <div class="mc-q">
-            <p>4. Hvilken setning passer deg best?</p>
-            <div class="mc-opt" data-q="4" data-score="1" onclick="selectMC(this)">Jeg sover dårlig hvis investeringene svinger</div>
-            <div class="mc-opt" data-q="4" data-score="2" onclick="selectMC(this)">Jeg tåler litt uro, men bekymrer meg ved store fall</div>
-            <div class="mc-opt" data-q="4" data-score="3" onclick="selectMC(this)">Komfortabel med svingninger på vei mot målet</div>
-            <div class="mc-opt" data-q="4" data-score="4" onclick="selectMC(this)">Svingninger plager meg ikke — jeg tenker langsiktig</div>
-          </div>
-          <div id="mcResult" style="font-size:0.77rem;color:var(--teal);font-weight:500;margin-top:2px;"></div>
-        </div>
-      </div>
-
-      <!-- FINANSIELL SITUASJON — now section 2 -->
-      <div class="form-group">
-        <div class="section-title"><span class="num">2</span>Finansiell situasjon</div>
-        <div class="form-group">
-          <label class="form-label">Årslønn etter skatt</label>
-          <div class="num-wrap"><span class="pfx">kr</span><input type="number" id="income" value="600000" min="0" step="10000"></div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Årlige utgifter</label>
-          <div class="num-wrap"><span class="pfx">kr</span><input type="number" id="expenses" value="350000" min="0" step="10000"></div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Investerbare eiendeler</label>
-          <div class="num-wrap"><span class="pfx">kr</span><input type="number" id="assets" value="0" min="0" step="10000"></div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Gjeld</label>
-          <div class="num-wrap"><span class="pfx">kr</span><input type="number" id="debt" value="0" min="0" step="10000"></div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Buffer (antall måneder utgifter)</label>
-          <div class="num-wrap"><span class="pfx">mnd</span><input type="number" id="bufferMonths" value="3" min="0" max="24" step="0.5" style="padding-left:44px;"></div>
-        </div>
-        <label class="form-label">Evne til å tåle svingninger</label>
-        <div class="cap-bar" id="capBar"><div class="cap-seg"></div><div class="cap-seg"></div><div class="cap-seg"></div><div class="cap-seg"></div><div class="cap-seg"></div></div>
-        <div class="cap-label" id="capLabel">Beregnes…</div>
-      </div>
-
-      <!-- RISIKOVILJE — section 3 -->
-      <div class="form-group">
-        <div class="section-title"><span class="num">3</span>Risikovilje</div>
-        <div id="riskFromMCNote" class="hidden" style="font-size:0.75rem;color:var(--teal);margin-bottom:0.5rem;font-weight:500;"></div>
-        <div class="pill-group" id="riskGroup">
-          <button class="pill" data-val="Ingen" onclick="selectPill(this,'riskGroup');selectedRisk='Ingen';updateCap()">Ingen</button>
-          <button class="pill" data-val="Meget lav" onclick="selectPill(this,'riskGroup');selectedRisk='Meget lav';updateCap()">Meget lav</button>
-          <button class="pill" data-val="Lav" onclick="selectPill(this,'riskGroup');selectedRisk='Lav';updateCap()">Lav</button>
-          <button class="pill" data-val="Middels" onclick="selectPill(this,'riskGroup');selectedRisk='Middels';updateCap()">Middels</button>
-          <button class="pill active teal" data-val="Offensiv" onclick="selectPill(this,'riskGroup');selectedRisk='Offensiv';updateCap()">Offensiv</button>
-          <button class="pill" data-val="Høy" onclick="selectPill(this,'riskGroup');selectedRisk='Høy';updateCap()">Høy</button>
-        </div>
-        <div style="font-size:0.7rem;color:var(--ink-muted);margin-top:5px;">«Offensiv» = høy aksjeandel · «Høy» = maksimal aksjeandel</div>
-      </div>
-
-      <!-- INVESTERING — now section 4 -->
-      <div class="form-group">
-        <div class="section-title"><span class="num">4</span>Investering</div>
-        <div class="form-group">
-          <label class="form-label">Startkapital (NOK)</label>
-          <div class="num-wrap"><span class="pfx">kr</span><input type="number" id="startCapital" value="0" min="0" step="10000"></div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Månedlig sparing (NOK)</label>
-          <div class="num-wrap"><span class="pfx">kr</span><input type="number" id="monthlySavings" value="5000" min="0" step="500"></div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Tidshorisont: <span class="slider-value" id="horizonVal">15 år</span></label>
-          <input type="range" id="horizon" min="1" max="40" value="15" oninput="updateSlider()">
-          <div class="slider-labels"><span>1 år</span><span>40 år</span></div>
-        </div>
-      </div>
-
-      <!-- KOSTNADER — section 5 -->
-      <div class="form-group">
-        <div class="section-title"><span class="num">5</span>Kostnader</div>
-        <div class="form-group">
-          <label class="form-label">Aksjer (%)</label>
-          <div class="num-wrap"><span class="pfx">%</span><input type="number" id="costStocks" value="0.70" min="0" max="3" step="0.01"></div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Obligasjoner (%)</label>
-          <div class="num-wrap"><span class="pfx">%</span><input type="number" id="costBonds" value="0.30" min="0" max="3" step="0.01"></div>
-        </div>
-      </div>
-
-      <button class="calc-btn" onclick="calculate()">Beregn anbefaling</button>
-      <div class="disclaimer">Verktøyet gir strategisk rådgivning og er ikke å anse som personlig investeringsrådgivning. Historisk avkastning er ingen garanti for fremtidig avkastning.</div>
-    </div><!-- /drawer -->
-
-    <!-- MAIN SPLIT: RESULTS + CHAT -->
-    <div class="advisory-main">
-      <!-- RESULTS PANEL -->
-      <div class="advisory-results" id="advisoryResults">
-        <div class="empty-state" id="emptyState">
-          <svg width="56" height="56" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" stroke="currentColor" stroke-width="2"/><path d="M20 40 L28 28 L36 34 L44 22" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <p style="font-family:'DM Serif Display',serif;font-size:1.1rem;margin-bottom:0.4rem;">Ingen analyse ennå</p>
-          <p style="font-size:0.85rem;">Bruk AI-rådgiveren til høyre, eller klikk «Manuell» til venstre for å fylle inn selv.</p>
-        </div>
-        <div id="resultsContent" class="hidden">
-          <div id="riskBanner" class="hidden"></div>
-          <div class="result-header">
-            <div>
-              <p style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-muted);margin-bottom:5px;">Anbefalt profil</p>
-              <div class="profile-badge">
-                <div class="profile-dot" id="profileDot"></div>
-                <div><div class="profile-name" id="profileName"></div><div class="profile-sub" id="profileSub"></div></div>
-              </div>
-            </div>
-            <div style="text-align:right;">
-              <p style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-muted);margin-bottom:5px;">Aktivafordeling</p>
-              <div class="alloc-strip" id="allocStrip"></div>
-              <div style="display:flex;gap:12px;margin-top:5px;font-size:0.7rem;color:var(--ink-muted);">
-                <span style="color:#2a7f7f">■ <span id="allocS"></span> Aksjer</span>
-                <span style="color:#c9a84c">■ <span id="allocB"></span> Obligasjoner</span>
-              </div>
-            </div>
-          </div>
-          <div class="info-cards">
-            <div class="info-card"><div class="label">Forventet verdi</div><div class="value teal" id="expVal"></div><div class="sub">etter <span id="yrLabel"></span></div></div>
-            <div class="info-card"><div class="label">Pessimistisk (5%)</div><div class="value" id="pessVal"></div><div class="sub">90% sannsynlighetsbånd</div></div>
-            <div class="info-card"><div class="label">Optimistisk (95%)</div><div class="value gold" id="optimVal"></div><div class="sub">90% sannsynlighetsbånd</div></div>
-          </div>
-          <div class="chart-card">
-            <div class="chart-title">Simulert porteføljeutvikling — 1 000 scenarioer</div>
-            <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
-            <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:0.7rem;color:var(--ink-muted);">
-              <span>━ Forventet</span><span>▓ 90% bånd</span><span>╌ Bankkonto</span>
-            </div>
-          </div>
-          <div class="result-disclaimer" id="capNote"></div>
-        </div>
-      </div>
-
-      <!-- AI CHAT PANEL (right) -->
-      <div class="advisory-chat-panel">
-        <div class="adv-chat-header">
+      <!-- AI CHAT MODE -->
+      <div id="aiChatPane" style="display:flex;flex-direction:column;height:100%;">
+        <div class="adv-panel-header">
           <span><span class="ai-dot"></span>AI-rådgiver</span>
           <span style="font-size:0.72rem;color:var(--ink-muted);">Oppdaterer grafen automatisk</span>
         </div>
@@ -461,7 +319,160 @@ input[type=number]:focus{border-color:var(--teal);}
           <button class="adv-send" id="advSendBtn" onclick="advSend()">Send →</button>
         </div>
       </div>
-    </div><!-- /advisory-main -->
+
+      <!-- MANUAL FORM MODE -->
+      <div id="manualPane" class="hidden" style="display:flex;flex-direction:column;height:100%;">
+        <div class="adv-panel-header">
+          <span>✏️ Manuell inndata</span>
+        </div>
+        <div class="manual-form-panel">
+          <!-- SUITABILITY -->
+          <div class="form-group">
+            <div class="section-title"><span class="num">1</span>Egnethetsvurdering</div>
+            <label class="form-label">Kunnskap og erfaring</label>
+            <div class="pill-group" id="suitGroup">
+              <button class="pill" data-val="experience" onclick="selectPill(this,'suitGroup');updateSuit()">Erfaring med fond/verdipapirer</button>
+              <button class="pill" data-val="education" onclick="selectPill(this,'suitGroup');updateSuit()">Relevant utdanning</button>
+              <button class="pill active teal" data-val="questions" onclick="selectPill(this,'suitGroup');updateSuit()">Usikker — svar på spørsmål</button>
+              <button class="pill" data-val="none" onclick="selectPill(this,'suitGroup');updateSuit()">Ingen erfaring</button>
+            </div>
+            <div id="suitInfoExpert" class="hidden">
+              <span class="lesMer" onclick="toggleLesMer()">Les mer om hva profilene innebærer ▾</span>
+              <div id="lesMerContent" class="info-box hidden">
+                <ul>
+                  <li><strong>Verdipapirer</strong> er aksjer og obligasjoner. En aksje gir eierandel i et selskap. En obligasjon er et lån til et selskap eller stat.</li>
+                  <li><strong>Risiko</strong> betyr svingninger i verdi. Høyere potensiell avkastning gir som regel høyere risiko.</li>
+                  <li><strong>Kostnader</strong> spiser direkte av avkastningen din. 1% i kostnad kan over 20 år redusere sluttbeløpet med 15–20%.</li>
+                </ul>
+              </div>
+            </div>
+            <div id="suitInfoNone" class="info-box hidden">
+              <strong style="color:var(--teal);font-size:0.82rem;">Godt å vite før du starter:</strong>
+              <ul>
+                <li><strong>Verdipapirer</strong> er aksjer og obligasjoner. En aksje kan gi høy avkastning — men også store tap. En obligasjon er tryggere, men gir lavere avkastning.</li>
+                <li><strong>Risiko</strong> betyr svingninger. Lang tidshorisont reduserer risikoen betraktelig.</li>
+                <li><strong>Kostnader</strong> trekkes automatisk fra avkastningen. 0,5% kan over 20 år utgjøre hundretusener i tapt verdi.</li>
+              </ul>
+            </div>
+            <div id="mcBlock" style="margin-top:0.75rem;">
+              <div style="font-size:0.75rem;color:var(--ink-muted);margin-bottom:0.6rem;">Svar på spørsmålene for å fastsette din risikovilje:</div>
+              <div class="mc-q"><p>1. Hvis porteføljen falt 20% på tre måneder, hva ville du gjøre?</p>
+                <div class="mc-opt" data-q="1" data-score="1" onclick="selectMC(this)">Selge alt umiddelbart</div>
+                <div class="mc-opt" data-q="1" data-score="2" onclick="selectMC(this)">Selge noe for å redusere risiko</div>
+                <div class="mc-opt" data-q="1" data-score="3" onclick="selectMC(this)">Beholde og vente på bedring</div>
+                <div class="mc-opt" data-q="1" data-score="4" onclick="selectMC(this)">Kjøpe mer mens prisene er lave</div>
+              </div>
+              <div class="mc-q"><p>2. Hva er ditt primære mål med investeringen?</p>
+                <div class="mc-opt" data-q="2" data-score="1" onclick="selectMC(this)">Bevare verdiene</div>
+                <div class="mc-opt" data-q="2" data-score="2" onclick="selectMC(this)">Moderat vekst, begrenset risiko</div>
+                <div class="mc-opt" data-q="2" data-score="3" onclick="selectMC(this)">God vekst, tåler svingninger</div>
+                <div class="mc-opt" data-q="2" data-score="4" onclick="selectMC(this)">Maksimal langsiktig avkastning</div>
+              </div>
+              <div class="mc-q"><p>3. Hva er din investeringshorisont?</p>
+                <div class="mc-opt" data-q="3" data-score="1" onclick="selectMC(this)">Under 3 år</div>
+                <div class="mc-opt" data-q="3" data-score="2" onclick="selectMC(this)">3–7 år</div>
+                <div class="mc-opt" data-q="3" data-score="3" onclick="selectMC(this)">7–15 år</div>
+                <div class="mc-opt" data-q="3" data-score="4" onclick="selectMC(this)">Over 15 år</div>
+              </div>
+              <div class="mc-q"><p>4. Hvilken setning passer deg best?</p>
+                <div class="mc-opt" data-q="4" data-score="1" onclick="selectMC(this)">Jeg sover dårlig hvis investeringene svinger</div>
+                <div class="mc-opt" data-q="4" data-score="2" onclick="selectMC(this)">Jeg tåler litt uro, men bekymrer meg ved store fall</div>
+                <div class="mc-opt" data-q="4" data-score="3" onclick="selectMC(this)">Komfortabel med svingninger på vei mot målet</div>
+                <div class="mc-opt" data-q="4" data-score="4" onclick="selectMC(this)">Svingninger plager meg ikke — jeg tenker langsiktig</div>
+              </div>
+              <div id="mcResult" style="font-size:0.77rem;color:var(--teal);font-weight:500;margin-top:2px;"></div>
+            </div>
+          </div>
+          <!-- FINANSIELL SITUASJON -->
+          <div class="form-group">
+            <div class="section-title"><span class="num">2</span>Finansiell situasjon</div>
+            <div class="form-group"><label class="form-label">Årslønn etter skatt</label><div class="num-wrap"><span class="pfx">kr</span><input type="number" id="income" value="600000" min="0" step="10000"></div></div>
+            <div class="form-group"><label class="form-label">Årlige utgifter</label><div class="num-wrap"><span class="pfx">kr</span><input type="number" id="expenses" value="350000" min="0" step="10000"></div></div>
+            <div class="form-group"><label class="form-label">Investerbare eiendeler</label><div class="num-wrap"><span class="pfx">kr</span><input type="number" id="assets" value="0" min="0" step="10000"></div></div>
+            <div class="form-group"><label class="form-label">Gjeld</label><div class="num-wrap"><span class="pfx">kr</span><input type="number" id="debt" value="0" min="0" step="10000"></div></div>
+            <div class="form-group"><label class="form-label">Buffer (antall måneder utgifter)</label><div class="num-wrap"><span class="pfx">mnd</span><input type="number" id="bufferMonths" value="3" min="0" max="24" step="0.5" style="padding-left:44px;"></div></div>
+            <label class="form-label">Evne til å tåle svingninger</label>
+            <div class="cap-bar" id="capBar"><div class="cap-seg"></div><div class="cap-seg"></div><div class="cap-seg"></div><div class="cap-seg"></div><div class="cap-seg"></div></div>
+            <div class="cap-label" id="capLabel">Beregnes…</div>
+          </div>
+          <!-- RISIKOVILJE -->
+          <div class="form-group">
+            <div class="section-title"><span class="num">3</span>Risikovilje</div>
+            <div id="riskFromMCNote" class="hidden" style="font-size:0.75rem;color:var(--teal);margin-bottom:0.5rem;font-weight:500;"></div>
+            <div class="pill-group" id="riskGroup">
+              <button class="pill" data-val="Ingen" onclick="selectPill(this,'riskGroup');selectedRisk='Ingen';updateCap()">Ingen</button>
+              <button class="pill" data-val="Meget lav" onclick="selectPill(this,'riskGroup');selectedRisk='Meget lav';updateCap()">Meget lav</button>
+              <button class="pill" data-val="Lav" onclick="selectPill(this,'riskGroup');selectedRisk='Lav';updateCap()">Lav</button>
+              <button class="pill" data-val="Middels" onclick="selectPill(this,'riskGroup');selectedRisk='Middels';updateCap()">Middels</button>
+              <button class="pill active teal" data-val="Offensiv" onclick="selectPill(this,'riskGroup');selectedRisk='Offensiv';updateCap()">Offensiv</button>
+              <button class="pill" data-val="Høy" onclick="selectPill(this,'riskGroup');selectedRisk='Høy';updateCap()">Høy</button>
+            </div>
+            <div style="font-size:0.7rem;color:var(--ink-muted);margin-top:5px;">«Offensiv» = høy aksjeandel · «Høy» = maksimal aksjeandel</div>
+          </div>
+          <!-- INVESTERING -->
+          <div class="form-group">
+            <div class="section-title"><span class="num">4</span>Investering</div>
+            <div class="form-group"><label class="form-label">Startkapital (NOK)</label><div class="num-wrap"><span class="pfx">kr</span><input type="number" id="startCapital" value="0" min="0" step="10000"></div></div>
+            <div class="form-group"><label class="form-label">Månedlig sparing (NOK)</label><div class="num-wrap"><span class="pfx">kr</span><input type="number" id="monthlySavings" value="5000" min="0" step="500"></div></div>
+            <div class="form-group">
+              <label class="form-label">Tidshorisont: <span class="slider-value" id="horizonVal">15 år</span></label>
+              <input type="range" id="horizon" min="1" max="40" value="15" oninput="updateSlider()">
+              <div class="slider-labels"><span>1 år</span><span>40 år</span></div>
+            </div>
+          </div>
+          <!-- KOSTNADER -->
+          <div class="form-group">
+            <div class="section-title"><span class="num">5</span>Kostnader</div>
+            <div class="form-group"><label class="form-label">Aksjer (%)</label><div class="num-wrap"><span class="pfx">%</span><input type="number" id="costStocks" value="0.70" min="0" max="3" step="0.01"></div></div>
+            <div class="form-group"><label class="form-label">Obligasjoner (%)</label><div class="num-wrap"><span class="pfx">%</span><input type="number" id="costBonds" value="0.30" min="0" max="3" step="0.01"></div></div>
+          </div>
+          <button class="calc-btn" onclick="calculate()">Beregn anbefaling</button>
+          <div class="disclaimer">Verktøyet gir strategisk rådgivning og er ikke å anse som personlig investeringsrådgivning. Historisk avkastning er ingen garanti for fremtidig avkastning.</div>
+        </div><!-- /manual-form-panel -->
+      </div><!-- /manualPane -->
+    </div><!-- /adv-left-panel -->
+
+    <!-- RESULTS — full remaining width -->
+    <div class="advisory-results" id="advisoryResults">
+      <div class="empty-state" id="emptyState">
+        <svg width="56" height="56" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" stroke="currentColor" stroke-width="2"/><path d="M20 40 L28 28 L36 34 L44 22" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <p style="font-family:'DM Serif Display',serif;font-size:1.1rem;margin-bottom:0.4rem;">Ingen analyse ennå</p>
+        <p style="font-size:0.85rem;">Svar på spørsmålene til venstre, eller velg modus ovenfor.</p>
+      </div>
+      <div id="resultsContent" class="hidden">
+        <div id="riskBanner" class="hidden"></div>
+        <div class="result-header">
+          <div>
+            <p style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-muted);margin-bottom:5px;">Anbefalt profil</p>
+            <div class="profile-badge">
+              <div class="profile-dot" id="profileDot"></div>
+              <div><div class="profile-name" id="profileName"></div><div class="profile-sub" id="profileSub"></div></div>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <p style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-muted);margin-bottom:5px;">Aktivafordeling</p>
+            <div class="alloc-strip" id="allocStrip"></div>
+            <div style="display:flex;gap:12px;margin-top:5px;font-size:0.7rem;color:var(--ink-muted);">
+              <span style="color:#2a7f7f">■ <span id="allocS"></span> Aksjer</span>
+              <span style="color:#c9a84c">■ <span id="allocB"></span> Obligasjoner</span>
+            </div>
+          </div>
+        </div>
+        <div class="info-cards">
+          <div class="info-card"><div class="label">Forventet verdi</div><div class="value teal" id="expVal"></div><div class="sub">etter <span id="yrLabel"></span></div></div>
+          <div class="info-card"><div class="label">Pessimistisk (5%)</div><div class="value" id="pessVal"></div><div class="sub">90% sannsynlighetsbånd</div></div>
+          <div class="info-card"><div class="label">Optimistisk (95%)</div><div class="value gold" id="optimVal"></div><div class="sub">90% sannsynlighetsbånd</div></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Simulert porteføljeutvikling — 1 000 scenarioer</div>
+          <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:0.7rem;color:var(--ink-muted);">
+            <span>━ Forventet</span><span>▓ 90% bånd</span><span>╌ Bankkonto</span>
+          </div>
+        </div>
+        <div class="result-disclaimer" id="capNote"></div>
+      </div>
+    </div>
   </div><!-- /advisory-body -->
 </div><!-- /screenAdvisory -->
 
@@ -549,23 +560,51 @@ function goScreen(name){
   document.getElementById('screen'+name.charAt(0).toUpperCase()+name.slice(1)).classList.add('active');
   document.getElementById('navDecision').classList.toggle('active',name==='landing');
   document.getElementById('navAdvisory').classList.toggle('active',name==='advisory');
-  if(name==='advisory'&&document.getElementById('advChatHistory').children.length===0){
-    initAdvChat();
-    // Drawer stays closed — AI chat drives the flow; user opens manually if needed
-    closeDrawer();
-  }
 }
 
 // ══════════════════════════════════════
-// DRAWER
+// ADVISORY MODE TOGGLE
 // ══════════════════════════════════════
-let drawerOpen=false;
-function toggleDrawer(){drawerOpen?closeDrawer():openDrawer();}
-function openDrawer(){drawerOpen=true;document.getElementById('drawer').classList.add('open');document.getElementById('advisoryBody').classList.add('drawer-open');}
-function closeDrawer(){drawerOpen=false;document.getElementById('drawer').classList.remove('open');document.getElementById('advisoryBody').classList.remove('drawer-open');}
+let advMode=null;
+
+function chooseMode(mode){
+  document.getElementById('modeChooser').classList.add('hidden');
+  document.getElementById('modeSwitchBar').classList.remove('hidden');
+  _applyMode(mode);
+  if(mode==='ai') initAdvChat();
+}
+
+function switchMode(mode){
+  if(mode===advMode) return;
+  if(mode==='manual') prefillManualFromState();
+  _applyMode(mode);
+}
+
+function _applyMode(mode){
+  advMode=mode;
+  document.getElementById('pillAI').classList.toggle('active',mode==='ai');
+  document.getElementById('pillManual').classList.toggle('active',mode==='manual');
+  const aiPane=document.getElementById('aiChatPane');
+  const manPane=document.getElementById('manualPane');
+  aiPane.style.display=mode==='ai'?'flex':'none';
+  if(mode==='manual'){manPane.classList.remove('hidden');}else{manPane.classList.add('hidden');}
+}
+
+function prefillManualFromState(){
+  if(collectedState.horizon){document.getElementById('horizon').value=collectedState.horizon;updateSlider();}
+  if(collectedState.monthly) document.getElementById('monthlySavings').value=collectedState.monthly;
+  if(collectedState.lumpSum) document.getElementById('startCapital').value=collectedState.lumpSum;
+  if(collectedState.income) document.getElementById('income').value=collectedState.income;
+  if(collectedState.expenses) document.getElementById('expenses').value=collectedState.expenses;
+  if(collectedState.bufferMonths!==undefined) document.getElementById('bufferMonths').value=collectedState.bufferMonths;
+  updateCap();
+}
+
+// closeDrawer stub — called by renderResults, now a no-op
+function closeDrawer(){}
 
 // ══════════════════════════════════════
-// DRAWER FORM
+// FORM STATE
 // ══════════════════════════════════════
 let selectedRisk="Offensiv",chartInst=null;
 const mcAnswers={};
@@ -711,374 +750,362 @@ function calculate(){
 document.getElementById('horizon').addEventListener('input',updateSlider);
 updateCap();updateSuit();
 
-// ══════════════════════════════════════
-// LANDING — DECISION MODE (Claude API)
-// ══════════════════════════════════════
-let landingMsgs=[],landingLocked=false;
-const DECISION_SYSTEM=`Du er en vennlig og jordnær finansiell beslutningstaker i en norsk app.
-
-## Din oppgave
-Hjelp brukeren å fatte en KLAR BESLUTNING raskt om hva de skal gjøre med ekstra penger. Still max 4–5 korte spørsmål, ett om gangen, deretter gi ÉN klar anbefaling. ALDRI si "det kommer an på" uten å konkludere.
-
-## Spørsmål du MÅ stille (i denne rekkefølgen, ett om gangen)
-1. Hvor mye snakker vi om — er det et engangsbeløp, månedlig sparing, eller begge deler? Be om konkrete tall.
-2. Har de en buffer (antall måneder utgifter de har lett tilgjengelig)?
-3. Har de gjeld? Hvis ja: HVILKEN RENTE? Dette er kritisk.
-   → Hvis de ikke svarer på renten: spør én gang til eksplisitt: "Hva er renten på lånet ditt omtrent?"
-   → Bruk 3% som siste utvei hvis de etter to forsøk ikke svarer.
-4. Tidshorisont — når kan de tenke seg å bruke pengene?
-5. Komfort med svingninger (kun nødvendig hvis investering er aktuelt)
-
-## FORMATERING — følg disse reglene nøye
-- Skriv alltid én blank linje (linjeskift) mellom spørsmål og svar, og mellom avsnitt.
-- Bruk HTML-formatering i alle svar:
-  - Alternativer og begrunnelsespunkter: <ul><li>...</li></ul>
-  - Avsnittsskille: <br> mellom naturlige seksjoner
-  - Viktige ord: <strong>ord</strong>
-- Hold hvert svar kort — maks 3–4 setninger + ett spørsmål.
-- ALDRI skriv lange avsnitt med sammenhengende tekst når en liste er mer lesbart.
-
-## QUICK-svar (obligatorisk — send alltid etter hvert svar)
-Etter hvert svar, send denne blokken med 2–5 relevante svaralternativer tilpasset NØYAKTIG det du nettopp spurte om:
-[QUICK:["Alternativ 1","Alternativ 2","Alternativ 3"]]
-
-Eksempler:
-- Spurte om beløp → [QUICK:["5 000 kr/mnd","10 000 kr/mnd","50 000 kr engangsbeløp","200 000 kr engangsbeløp","500 000 kr engangsbeløp"]]
-- Spurte om buffer → [QUICK:["Ja, over 3 måneder","Ca. 1–2 måneder","Nei, ingen buffer"]]
-- Spurte om gjeld → [QUICK:["Ja, boliglån","Ja, forbrukslån (høy rente)","Nei, ingen gjeld"]]
-- Spurte om rente → [QUICK:["Ca. 2%","Ca. 3%","Ca. 4%","Ca. 5%","Over 6%"]]
-- Spurte om horisont → [QUICK:["Under 3 år","3–7 år","7–15 år","Over 15 år"]]
-- Spurte om risiko → [QUICK:["Trygt og stabilt","Litt risiko er ok","Best mulig avkastning"]]
-- Etter anbefaling → [QUICK:["Fortell mer","Hva om jeg gjør det omvendt?","Se full analyse"]]
-
-## CHART-data (obligatorisk ved anbefaling)
-Når du gir anbefaling, send ALLTID denne blokken med reelle tall fra samtalen:
-[CHART:{"lumpSum":0,"monthly":0,"years":15,"mortgageRate":0.03,"includeInvest":true,"includeMortgage":false}]
-
-- lumpSum: engangsbeløp i NOK (0 hvis ikke aktuelt)
-- monthly: månedlig sparing i NOK (0 hvis ikke aktuelt)
-- years: ALLTID bruk øvre grense av intervall — "7–15 år" → 15, "3–7 år" → 7, "over 15 år" → 20
-- mortgageRate: rente som desimal (0.03 = 3%)
-- includeInvest: true hvis investering er anbefalt eller relevant alternativ
-- includeMortgage: true kun hvis de har gjeld
-
-## Kontotype og neste steg (alltid inkluder i anbefalingen)
-Avslutt alltid rec-box med ett konkret neste steg basert på profilen:
-
-**Kontotype-regler:**
-- Aksjer ≥ 80% → anbefal ASK (Aksjesparekonto) — skattefordel ved gevinst og bytte av fond
-- Aksjer mellom 20–80% (obligasjoner > 20%) → vurder kombinasjonsfond med 80–90% aksjeandel i stedet — disse kvalifiserer for ASK, er enklere å administrere enn å dele mellom ASK og fondskonto, og er et like godt alternativ. Nevn at kombinasjonsfond ofte er aktivt forvaltet og at brukeren bør se etter lavest mulig forvaltningshonorar, gjerne under 0,5% — og om mulig passivt forvaltet.
-- Aksjer < 20% eller bare sparing → anbefal høyrentekonto
-- Hvis brukeren er ung (under ~34 år), jobber og betaler skatt → nevn BSU som første prioritet før annen investering ("Fyll BSU-kvoten din først — du får 20% skattefradrag på innskudd opp til 31 500 kr/år")
-
-**Bank/plattform-eksempler** (inkluder alltid 2–3 konkrete eksempler + "din egen bank"):
-- For ASK/fond: Nordnet, Kron, DNB, Sbanken, din egen bank
-- For kombinasjonsfond i ASK: Nordnet, Kron, Sbanken, din egen bank — søk etter kombinasjonsfond med 80–90% aksjer og lav kostnad
-- For høyrentekonto: Bulder Bank, Sbanken, Lunar, din egen bank
-
-Eksempel på neste-steg-setning i rec-box:
-<div class="next-step">📋 <strong>Slik kommer du i gang:</strong> Opprett en <strong>ASK</strong> hos Nordnet, Kron eller din egen bank — og start å spare. Det tar 10 minutter.</div>
-
-## Format for anbefaling
-Bruk alltid denne HTML-strukturen nøyaktig:
-<div class="rec-box">
-<div class="rec-title">💡 Min anbefaling</div>
-<div class="alloc-line">[Enkel fordeling]</div>
-<ul>
-<li>[Begrunnelse punkt 1]</li>
-<li>[Begrunnelse punkt 2]</li>
-<li>[Begrunnelse punkt 3 valgfritt]</li>
-</ul>
-<div class="next-step">📋 <strong>Slik kommer du i gang:</strong> [kontotype + 2–3 banker/plattformer + din egen bank]</div>
-<div class="flip-note">🔄 Hvis du hadde gjort det motsatte: [kort innsikt]</div>
-</div>
-
-Send CHART-blokken direkte etter rec-box, deretter QUICK-blokken, deretter eventuell knapp:
-<button class="deeper-btn" onclick="triggerDeeper()">Se full analyse i KapitalKompasset →</button>
-
-## Beslutningsprinsipper (bruk internt)
-- Buffer under 3 måneder → prioriter buffer
-- Gjeld med rente over 5% → nedbetal gjeld før investering
-- Gjeld med rente 2–5% → avhenger av horisont, kan splitte
-- Gjeld under 2% → investering gir sannsynligvis bedre avkastning
-- Stabil økonomi + god buffer + lang horisont → investering
-- Kombinasjon → foreslå splitting med konkrete prosenter
-
-## Tone
-- Varm, bestemt, praktisk. Som en smart venn.
-- Ingen jargon. Korte setninger. Én ting om gangen.
-- ALDRI start med analyse — still spørsmål først.`;
-
 // ── AI REPLY POST-PROCESSING ──
-// Strip markdown asterisks, highlight question sentences with teal
 function formatAIReply(html){
-  // Strip bold/italic asterisks (**text** → text, *text* → text)
-  let out = html
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*([^*]+)\*/g, '$1');
-  // Highlight sentence-level questions: any run of text ending with ?
-  // Works on plain text nodes between tags — split on sentence boundaries
-  // Wrap sequences ending in ? inside .ai-question span
-  // Strategy: split the text content of text nodes and re-wrap
-  // Simpler reliable approach: regex on plain text segments outside HTML tags
-  out = out.replace(/([^<>]{4,}?\?)/g, (m) => {
-    // Don't wrap if it's clearly inside an attribute or tag
-    return `<span class="ai-question">${m}</span>`;
-  });
+  let out=html
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g,'$1');
+  out=out.replace(/([^<>]{4,}?\?)/g,m=>`<span class="ai-question">${m}</span>`);
   return out;
 }
 
-function landingAddBubble(html,role){
-  const processed = role==='ai' ? formatAIReply(html) : html;
-  const d=document.createElement('div');d.className=`bubble ${role}`;d.innerHTML=processed;
-  document.getElementById('landingMsgs').appendChild(d);
-  document.querySelector('#screenLanding .landing-chat').scrollTop=99999;
-  return d;
+// Fund / bank disclaimer injection
+const FUND_NAMES=[
+  'KLP','DNB Global','DNB Indeks','Storebrand Indeks','Storebrand Global',
+  'Alfred Berg','Holberg','Nordnet Indeks','SKAGEN','Odin Fond','Eika',
+  'Handelsbanken Indeks','Fidelity','Vanguard','BlackRock','iShares','Xtrackers','Lyxor',
+  'Nordnet','Sbanken','SpareBank','Kron','Bulder','Lunar','Gjensidige','Sparebanken','Storebrand Bank'
+];
+const BANK_NAMES=['Nordnet','Sbanken','SpareBank','Kron','Bulder','Lunar','Gjensidige','Sparebanken','Storebrand Bank'];
+function injectFundDisclaimer(el){
+  const text=el.textContent||'';
+  const hasFund=FUND_NAMES.some(f=>text.includes(f));
+  if(hasFund&&!el.querySelector('.fund-disclaimer')){
+    const note=document.createElement('div');
+    note.className='fund-disclaimer';
+    const hasBank=BANK_NAMES.some(b=>text.includes(b));
+    note.innerHTML=hasBank
+      ?'⚠️ <strong>Merk:</strong> Fondene og bankene/plattformene nevnt ovenfor er kun illustrative eksempler — dette er <em>ikke</em> en anbefaling om å velge ett spesifikt produkt fremfor et annet. Kombinasjonsfond er ofte aktivt forvaltet — se etter lav forvaltningsavgift (helst under 0,5%) og vurder passivt forvaltede alternativer. Gjør egne undersøkelser eller kontakt din bank.'
+      :'⚠️ <strong>Merk:</strong> Fondene nevnt ovenfor er kun illustrative eksempler — dette er <em>ikke</em> en anbefaling om å velge ett spesifikt fond fremfor et annet. Kombinasjonsfond er ofte aktivt forvaltet — se etter lav forvaltningsavgift (helst under 0,5%). Gjør egne undersøkelser eller kontakt din bank.';
+    el.appendChild(note);
+  }
 }
-function landingShowTyping(){const d=landingAddBubble('<div class="typing-dots"><span></span><span></span><span></span></div>','ai');d.id='lTyping';return d;}
-function landingRemoveTyping(){const t=document.getElementById('lTyping');if(t)t.remove();}
-function setLandingQuick(opts){const a=document.getElementById('landingQuick');a.innerHTML='';(opts||[]).forEach(label=>{const b=document.createElement('button');b.className='qbtn';b.textContent=label;b.onclick=()=>{document.getElementById('landingInput').value=label;landingSend();};a.appendChild(b);});}
 
-// ── LANDING GROWTH CHART ──
+// Landing growth chart
 let landingChartInst=null;
 function renderLandingChart(p){
   const {lumpSum=0,monthly=0,years=15,mortgageRate=0.03,includeInvest=true,includeMortgage=false}=p;
   const wrap=document.getElementById('landingChartWrap');
   wrap.classList.remove('hidden');
-
-  const INVEST_RETURN=0.07;
-  const SAVINGS_RETURN=0.025;
-  const labels=[];
-  const investSeries=[],mortgageSeries=[],savingsSeries=[];
-
+  const INVEST_RETURN=0.07,SAVINGS_RETURN=0.025;
+  const labels=[],investSeries=[],mortgageSeries=[],savingsSeries=[];
   for(let yr=1;yr<=years;yr++){
     labels.push(`År ${yr}`);
-    // Lump sum: grows by compounding. Monthly: FV of annuity. Both combined.
-    const lumpFactor=Math.pow(1+INVEST_RETURN,yr);
-    const annuFV=monthly>0?monthly*12*((Math.pow(1+INVEST_RETURN,yr)-1)/INVEST_RETURN):0;
-    const lumpSavFactor=Math.pow(1+SAVINGS_RETURN,yr);
-    const annuSavFV=monthly>0?monthly*12*((Math.pow(1+SAVINGS_RETURN,yr)-1)/SAVINGS_RETURN):0;
-    const lumpMortFactor=Math.pow(1+mortgageRate,yr);
-    const annuMortFV=monthly>0?monthly*12*((Math.pow(1+mortgageRate,yr)-1)/mortgageRate):0;
-
-    if(includeInvest) investSeries.push(Math.round(lumpSum*lumpFactor+annuFV));
-    if(includeMortgage) mortgageSeries.push(Math.round(lumpSum*lumpMortFactor+annuMortFV));
-    savingsSeries.push(Math.round(lumpSum*lumpSavFactor+annuSavFV));
+    const lI=Math.pow(1+INVEST_RETURN,yr),aI=monthly>0?monthly*12*((Math.pow(1+INVEST_RETURN,yr)-1)/INVEST_RETURN):0;
+    const lS=Math.pow(1+SAVINGS_RETURN,yr),aS=monthly>0?monthly*12*((Math.pow(1+SAVINGS_RETURN,yr)-1)/SAVINGS_RETURN):0;
+    const lM=Math.pow(1+mortgageRate,yr),aM=monthly>0?monthly*12*((Math.pow(1+mortgageRate,yr)-1)/mortgageRate):0;
+    if(includeInvest) investSeries.push(Math.round(lumpSum*lI+aI));
+    if(includeMortgage) mortgageSeries.push(Math.round(lumpSum*lM+aM));
+    savingsSeries.push(Math.round(lumpSum*lS+aS));
   }
-
   const datasets=[];
   if(includeInvest) datasets.push({label:'Investering',data:investSeries,borderColor:'#2a7f7f',backgroundColor:'rgba(42,127,127,0.08)',borderWidth:2.5,fill:true,pointRadius:0,tension:0.4});
   if(includeMortgage) datasets.push({label:'Nedbetaling boliglån',data:mortgageSeries,borderColor:'#c9a84c',backgroundColor:'rgba(201,168,76,0.08)',borderWidth:2,fill:false,pointRadius:0,tension:0.4,borderDash:[5,4]});
   datasets.push({label:'Bankkonto',data:savingsSeries,borderColor:'#aaa',backgroundColor:'transparent',borderWidth:1.5,fill:false,pointRadius:0,tension:0.4,borderDash:[3,3]});
-
   const legendItems=[
     includeInvest?`<span class="legend-item"><span class="legend-dot" style="background:#2a7f7f"></span>Investering</span>`:'',
     includeMortgage?`<span class="legend-item"><span class="legend-dot" style="background:#c9a84c"></span>Nedbetaling lån</span>`:'',
     `<span class="legend-item"><span class="legend-dot" style="background:#aaa"></span>Bankkonto</span>`,
   ].filter(Boolean).join('');
-
-  // Headline: show both lump sum and monthly if applicable
-  const parts=[];
-  if(lumpSum>0) parts.push(fmt(lumpSum)+' engangsbeløp');
-  if(monthly>0) parts.push(fmt(monthly)+'/mnd');
+  const parts=[];if(lumpSum>0)parts.push(fmt(lumpSum)+' engangsbeløp');if(monthly>0)parts.push(fmt(monthly)+'/mnd');
   const headline=(parts.join(' + ')||'Beregning')+` over ${years} år`;
-
-  wrap.innerHTML=`
-    <div class="landing-chart-card">
-      <div class="chart-header">
-        <span class="chart-headline">${headline}</span>
-        <div class="chart-legend">${legendItems}</div>
-      </div>
-      <div class="chart-canvas-wrap">
-        <canvas id="landingChart"></canvas>
-      </div>
-      <div class="chart-note">Illustrerende beregning — investering basert på forventet 7% geometrisk avkastning etter kostnader</div>
-    </div>`;
-
+  wrap.innerHTML=`<div class="landing-chart-card">
+    <div class="chart-header"><span class="chart-headline">${headline}</span><div class="chart-legend">${legendItems}</div></div>
+    <div class="chart-canvas-wrap"><canvas id="landingChart"></canvas></div>
+    <div class="chart-note">Illustrerende beregning — investering basert på forventet 7% geometrisk avkastning etter kostnader</div>
+  </div>`;
   if(landingChartInst)landingChartInst.destroy();
   landingChartInst=new Chart(document.getElementById('landingChart').getContext('2d'),{
     type:'line',data:{labels,datasets},
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      interaction:{mode:'index',intersect:false},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.parsed.y)}`}}},
-      scales:{
-        x:{ticks:{maxTicksLimit:8,font:{family:'DM Sans',size:10},color:'#7a7a9a'},grid:{color:'#f0ece3'}},
-        y:{ticks:{font:{family:'DM Sans',size:10},color:'#7a7a9a',callback:v=>fmt(v)},grid:{color:'#f0ece3'}}
-      }
-    }
-  });
+      scales:{x:{ticks:{maxTicksLimit:8,font:{family:'DM Sans',size:10},color:'#7a7a9a'},grid:{color:'#f0ece3'}},
+              y:{ticks:{font:{family:'DM Sans',size:10},color:'#7a7a9a',callback:v=>fmt(v)},grid:{color:'#f0ece3'}}}}});
   setTimeout(()=>wrap.scrollIntoView({behavior:'smooth',block:'nearest'}),100);
 }
 
-async function landingSend(){
+// ══════════════════════════════════════
+// RECOMMENDATION ENGINE
+// ══════════════════════════════════════
+const ENG = {"titles":{"0":{"C":"Du er forsiktig, og å holde alt i sparing er riktig for deg akkurat nå.","N":"Med din situasjon og horisont er sparing på høyrentekonto det mest fornuftige.","A":"Du er komfortabel med risiko, men situasjonen tilsier at trygg sparing er riktig nå."},"20":{"C":"En forsiktig start med litt aksjeeksponering passer godt til din profil.","N":"20% aksjer gir litt vekstpotensial med begrenset risiko.","A":"Du ønsker mer, men din situasjon tilsier at 20% aksjer er riktig utgangspunkt."},"35":{"C":"35% aksjer er et trygt valg som gir noe vekst uten for store svingninger.","N":"35% aksjer er et godt balansert valg for din situasjon.","A":"Du er risikovillig, men situasjonen din tilsier en moderat start med 35% aksjer."},"50":{"C":"50% aksjer er et solid kompromiss mellom vekst og stabilitet.","N":"En halvt-halvt-fordeling er et klassisk balansert valg.","A":"Du tåler svingninger godt — 50% aksjer balanserer avkastning og risiko fint."},"65":{"C":"65% aksjer gir god vekst over tid. Husk at svingninger er normalt og midlertidige.","N":"65% aksjer er et vekstorientert valg som passer din horisont og økonomi.","A":"Du er offensiv og situasjonen støtter 65% aksjer. Et solid valg for langsiktig vekst."},"80":{"C":"80% aksjer er offensivt, men din lange horisont gjør det forsvarlig.","N":"80% aksjer er et godt langsiktig valg. Tid reduserer risikoen betraktelig.","A":"80% aksjer passer din risikovilje og horisont. Tenk langsiktig ved markedsfall."},"100":{"C":"100% aksjer innebærer store svingninger. Din horisont gjør det mulig — hold ut ved fall.","N":"100% aksjer er det mest offensive valget, men historisk det beste over tid.","A":"100% aksjer passer deg godt. Svingninger er normalt — ikke selg i panikk."}},"horizonNotes":{"S":"Med kort tidshorisont er det viktig å ikke ta for mye risiko — pengene kan bli trengt snart.","M":"Et mellomlangt perspektiv gir rom for noe risiko. Markedet kan svinge, men har tid til å hente seg inn.","L":"Lang horisont er din største fordel — svingninger underveis er normalt og midlertidige.","VL":"Svært lang horisont betyr at du kan ignorere kortsiktige svingninger. Tid er din beste venn."},"bufferNotes":{"L":"⚠️ Bufferen din er lav. Bygg den opp til 2–3 måneder utgifter før du øker investeringene.","M":"Bufferen er OK, men litt mer ville gi ekstra trygghet ved uventede utgifter.","H":""},"steps":{"0":["Opprett en høyrentekonto hos Bulder Bank, Sbanken, Lunar eller din bank","Sett opp automatisk månedlig overføring","La renten jobbe for deg — trygt og enkelt"],"20":["Opprett en ASK (aksjesparekonto) hos Nordnet, Kron eller din bank","Velg et forsiktig kombinasjonsfond med lav kostnad","Sett opp månedlig automatisk sparing","Hold igjen — ikke øk risikoen for raskt"],"35":["Opprett en ASK (aksjesparekonto) hos Nordnet, Kron eller din bank","Velg et kombinasjonsfond med ca. 80% aksjer og lav forvaltningsavgift","Sett opp månedlig automatisk sparing","Tenk langsiktig — svingninger er normalt"],"50":["Opprett en ASK (aksjesparekonto) hos Nordnet, Kron eller din bank","Velg et kombinasjonsfond med ca. 80% aksjer og lav kostnad (under 0,5%)","Sett opp automatisk månedlig sparing","Ikke selg ved markedsfall — hold fast og tenk langsiktig"],"65":["Opprett en ASK (aksjesparekonto) hos Nordnet, Kron eller din bank","Velg et kombinasjonsfond med 80–90% aksjer og lav forvaltningsavgift","Sett opp automatisk månedlig sparing","Vurder å øke sparingen ved lønnsøkning eller bonus"],"80":["Opprett en ASK (aksjesparekonto) hos Nordnet, Kron eller din bank","Velg et globalt aksjeindeksfond med lave kostnader","Sett opp automatisk månedlig sparing","Ikke selg ved markedsfall — hold fast og tenk langsiktig"],"100":["Opprett en ASK (aksjesparekonto) hos Nordnet, Kron eller din bank","Velg et bredt globalt aksjeindeksfond med lave kostnader","Sett opp automatisk månedlig sparing","Forvent store svingninger — det er normalt. Hold ut og tenk langsiktig"]},"products":{"0":"Høyrentekonto","20":"Forsiktig kombinasjonsfond (ca. 70–80% aksjer) i ASK","35":"Kombinasjonsfond med ca. 80% aksjer i ASK","50":"Kombinasjonsfond med 80–90% aksjer i ASK","65":"Kombinasjonsfond med 80–90% aksjer i ASK","80":"Globalt aksjeindeksfond i ASK","100":"Bredt globalt aksjeindeksfond i ASK"},"nextSteps":{"0":"Opprett en <strong>høyrentekonto</strong> hos Bulder Bank, Sbanken, Lunar eller din bank.","20":"Opprett en <strong>ASK</strong> og velg et kombinasjonsfond med ca. 80% aksjer. Se etter lav kostnad — gjerne passivt forvaltet.","35":"Opprett en <strong>ASK</strong> og velg et kombinasjonsfond med ca. 80% aksjer og lav forvaltningsavgift (under 0,5%).","50":"Opprett en <strong>ASK</strong> og velg et kombinasjonsfond med 80–90% aksjer. Enklere enn å splitte mellom ASK og fondskonto.","65":"Opprett en <strong>ASK</strong> og velg et kombinasjonsfond med 80–90% aksjer. Lav kostnad er viktigere enn hvilken bank du velger.","80":"Opprett en <strong>ASK</strong> hos Nordnet, Kron eller din bank, og start sparing i et globalt indeksfond.","100":"Opprett en <strong>ASK</strong> hos Nordnet, Kron eller din bank, og start sparing i et bredt globalt indeksfond med lave kostnader."},"flipNotes":{"0":"Hadde du investert i aksjer i stedet, ville pengene historisk vokst mer — men med svingninger du kanskje ikke er klar for akkurat nå.","20":"Med høyere aksjeandel ville du fått mer svingninger, men også høyere forventet avkastning over tid.","35":"En mer offensiv profil ville gitt mer svingninger men potensielt bedre langsiktig avkastning.","50":"Mer aksjer gir mer svingninger men historisk bedre langsiktig avkastning. Mindre aksjer gir mer stabilitet men lavere vekst.","65":"En mer aggressiv profil ville gitt mer svingninger. En mer defensiv gitt mer stabilitet — begge er gyldige valg.","80":"100% aksjer ville gitt maksimal vekst over tid, men også de største svingningene underveis.","100":"En mer forsiktig profil ville redusert svingningene, men historisk gitt lavere langsiktig avkastning."}};
+
+// Map allocation fraction → nearest engine equity key
+function allocToEngKey(frac){
+  const keys=[0,20,35,50,65,80,100];
+  const pct=Math.round(frac*100);
+  return String(keys.reduce((a,b)=>Math.abs(b-pct)<Math.abs(a-pct)?b:a));
+}
+// horizon years → horizon bucket key
+function hKeyFromYears(y){if(y<3)return'S';if(y<=7)return'M';if(y<=15)return'L';return'VL';}
+// buffer months → buffer key
+function bufKey(m){if(m<1)return'L';if(m<3)return'M';return'H';}
+// risk behaviour from MC Q1 score (1=cautious,2=neutral,3-4=aggressive)
+function riskChar(score){if(score<=1)return'C';if(score<=2)return'N';return'A';}
+
+function buildRecHTML(engKey, hKey, bKey, rChar, bufNote, horizNote){
+  const stepsArr = ENG.steps[engKey]||ENG.steps['50'];
+  const steps = stepsArr.map(s=>`<li>${s}</li>`).join('');
+  const bNote = bKey==='H'?'':ENG.bufferNotes[bKey]?`<li><strong>${ENG.bufferNotes[bKey]}</strong></li>`:'';
+  const disclaimer = `<div class="fund-disclaimer">⚠️ <strong>Merk:</strong> Bankene og plattformene nevnt ovenfor er illustrative eksempler — ikke en anbefaling om å velge én fremfor en annen. Kombinasjonsfond er ofte aktivt forvaltet — se etter lav forvaltningsavgift (helst under 0,5%) og vurder passivt forvaltede alternativer der det finnes. Gjør egne undersøkelser eller kontakt din bank.</div>`;
+  return `<div class="rec-box">
+<div class="rec-title">💡 Min anbefaling</div>
+<div class="alloc-line">${ENG.products[engKey]}</div>
+<ul>${bNote}${steps}</ul>
+<div class="next-step">📋 <strong>Slik kommer du i gang:</strong> ${ENG.nextSteps[engKey]}</div>
+<div class="flip-note">🔄 ${ENG.flipNotes[engKey]}</div>
+</div>${disclaimer}`;
+}
+
+// ══════════════════════════════════════
+// COLLECTED STATE (shared landing ↔ advisory)
+// ══════════════════════════════════════
+let collectedState = {
+  lumpSum: 0, monthly: 0, horizon: 15,
+  bufferMonths: 3, hasDebt: false, mortgageRate: 0.03,
+  riskComfort: 'N',  // C/N/A
+  income: 0, expenses: 0,
+  q1Score: 2  // behavioural Q1 score for rChar
+};
+
+// ══════════════════════════════════════
+// LANDING — FIXED QUESTION FLOW
+// ══════════════════════════════════════
+let landingStep = 0;
+let landingLocked = false;
+let askedDebtRate = false;
+
+const LANDING_QUESTIONS = [
+  // Step 0: amount
+  {
+    ask: 'Hei! 👋 La oss finne ut hva som passer best for deg.<br><br><span class="ai-question">Hvor mye penger snakker vi om — er det et engangsbeløp, månedlig sparing, eller begge deler?</span>',
+    quick: ['5 000 kr/mnd','10 000 kr/mnd','50 000 kr engangsbeløp','200 000 kr engangsbeløp','500 000 kr engangsbeløp'],
+    parse(txt){
+      const t=txt.toLowerCase();
+      const num=(s)=>{const m=s.match(/[\d\s,.]+/);return m?+m[0].replace(/[\s,.]/g,''):0;};
+      const hasMonthly=t.includes('/mnd')||t.includes('per mnd')||t.includes('månedlig')||t.includes('måned');
+      const hasLump=t.includes('engangs')||t.includes('engang');
+      if(hasMonthly){collectedState.monthly=num(txt)||5000;}
+      else if(hasLump){collectedState.lumpSum=num(txt)||100000;}
+      else{
+        const n=num(txt);
+        if(n>0){if(n<=50000)collectedState.monthly=n;else collectedState.lumpSum=n;}
+      }
+    }
+  },
+  // Step 1: buffer
+  {
+    ask: '<span class="ai-question">Har du en buffer — altså penger du lett kan bruke hvis noe uventet skjer?</span><br>Tommelfingerregelen er 2–3 måneder med utgifter.',
+    quick: ['Ja, godt over 3 måneder','Ca. 1–2 måneder','Nei, ingen buffer'],
+    parse(txt){
+      const t=txt.toLowerCase();
+      if(t.includes('ingen')||t.includes('nei')||t.includes('0'))collectedState.bufferMonths=0;
+      else if(t.includes('1')||t.includes('2')||t.includes('litt'))collectedState.bufferMonths=1.5;
+      else collectedState.bufferMonths=4;
+    }
+  },
+  // Step 2: debt
+  {
+    ask: '<span class="ai-question">Har du gjeld — for eksempel boliglån eller forbrukslån?</span>',
+    quick: ['Ja, boliglån','Ja, forbrukslån (høy rente)','Ja, studielån','Nei, ingen gjeld'],
+    parse(txt){
+      const t=txt.toLowerCase();
+      collectedState.hasDebt=!(t.includes('ingen')||t.includes('nei'));
+      if(t.includes('forbruks')||t.includes('kredittkort'))collectedState.mortgageRate=0.12;
+      else if(t.includes('studie'))collectedState.mortgageRate=0.035;
+      else if(t.includes('bolig'))collectedState.mortgageRate=0.04;
+    }
+  },
+  // Step 3: horizon
+  {
+    ask: '<span class="ai-question">Når ser du for deg å bruke pengene?</span><br>Jo lenger tidshorisont, jo mer risiko kan du tåle.',
+    quick: ['Under 3 år','3–7 år','7–15 år','Over 15 år'],
+    parse(txt){
+      const t=txt.toLowerCase();
+      const m=t.match(/(\d+)/);const n=m?+m[1]:10;
+      if(t.includes('under 3')||n<=2)collectedState.horizon=2;
+      else if(t.includes('3')&&t.includes('7'))collectedState.horizon=7;
+      else if(t.includes('7')&&t.includes('15'))collectedState.horizon=15;
+      else if(t.includes('over 15')||n>15)collectedState.horizon=20;
+      else collectedState.horizon=Math.min(40,Math.max(1,n));
+    }
+  },
+  // Step 4: risk comfort
+  {
+    ask: '<span class="ai-question">Siste spørsmål: hvis investeringen din falt 20% på ett år — hva ville du gjøre?</span>',
+    quick: ['Selge alt — det er for mye risiko','Holde på og vente','Kjøpe mer mens det er billig'],
+    parse(txt){
+      const t=txt.toLowerCase();
+      if(t.includes('selge alt')||t.includes('for mye')){collectedState.riskComfort='C';collectedState.q1Score=1;}
+      else if(t.includes('kjøpe mer')||t.includes('billig')){collectedState.riskComfort='A';collectedState.q1Score=4;}
+      else{collectedState.riskComfort='N';collectedState.q1Score=3;}
+    }
+  }
+];
+
+function landingAddBubble(html,role){
+  const processed=role==='ai'?formatAIReply(html):html;
+  const d=document.createElement('div');d.className=`bubble ${role}`;d.innerHTML=processed;
+  document.getElementById('landingMsgs').appendChild(d);
+  document.querySelector('#screenLanding .landing-chat').scrollTop=99999;
+  return d;
+}
+function setLandingQuick(opts){
+  const a=document.getElementById('landingQuick');a.innerHTML='';
+  (opts||[]).forEach(label=>{
+    const b=document.createElement('button');b.className='qbtn';b.textContent=label;
+    b.onclick=()=>{document.getElementById('landingInput').value=label;landingSend();};
+    a.appendChild(b);
+  });
+}
+
+function initLanding(){
+  landingStep=0;askedDebtRate=false;
+  setTimeout(()=>{
+    landingAddBubble(LANDING_QUESTIONS[0].ask,'ai');
+    setLandingQuick(LANDING_QUESTIONS[0].quick);
+  },300);
+}
+
+function landingSend(){
   if(landingLocked)return;
   const inp=document.getElementById('landingInput');
   const text=inp.value.trim();if(!text)return;
   inp.value='';setLandingQuick([]);
   landingAddBubble(text,'user');
-  landingMsgs.push({role:'user',content:text});
-  await landingCall();
-}
-async function landingCall(seed){
-  landingLocked=true;document.getElementById('landingSendBtn').disabled=true;
-  landingShowTyping();
-  const msgs=seed?[{role:'user',content:seed}]:landingMsgs;
-  try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:900,system:DECISION_SYSTEM,messages:msgs})});
-    const data=await res.json();
-    landingRemoveTyping();
-    if(data.error){landingAddBubble(`<em style="color:#b84040">Feil: ${data.error.message}</em>`,'ai');}
-    else{
-      let reply=data.content.map(b=>b.text||'').join('');
-      // Extract CHART block
-      const chartMatch=reply.match(/\[CHART:(\{.*?\})\]/s);
-      if(chartMatch){
-        try{renderLandingChart(JSON.parse(chartMatch[1]));}catch(e){console.warn('chart parse',e);}
-        reply=reply.replace(/\[CHART:\{.*?\}\]/s,'').trim();
-      }
-      // Extract QUICK block — AI-specified quick replies
-      const quickMatch=reply.match(/\[QUICK:(\[.*?\])\]/s);
-      let quickOpts=null;
-      if(quickMatch){
-        try{quickOpts=JSON.parse(quickMatch[1]);}catch(e){console.warn('quick parse',e);}
-        reply=reply.replace(/\[QUICK:\[.*?\]\]/s,'').trim();
-      }
-      landingAddBubble(reply,'ai');
-      landingMsgs.push({role:'assistant',content:data.content.map(b=>b.text||'').join('')});
-      // Use AI-specified quick replies if available, else minimal fallback
-      if(quickOpts&&quickOpts.length) setLandingQuick(quickOpts);
-      else setLandingQuick(["Fortsett","Jeg vil korrigere noe"]);
-    }
-  }catch(e){landingRemoveTyping();landingAddBubble('<em style="color:#b84040">Tilkobling feilet.</em>','ai');}
-  landingLocked=false;document.getElementById('landingSendBtn').disabled=false;
-}
-function triggerDeeper(){
-  goScreen('advisory');
-  const context=landingMsgs.map(m=>`${m.role==='user'?'Bruker':'AI'}: ${m.content.replace(/<[^>]+>/g,'')}`).join('\n').slice(0,1000);
+  landingLocked=true;
+
+  const q=LANDING_QUESTIONS[landingStep];
+  if(q&&q.parse) q.parse(text);
+
+  // Special: if they said they have debt but didn't mention rate, ask for rate once
+  if(landingStep===2&&collectedState.hasDebt&&collectedState.mortgageRate===0.04&&!askedDebtRate){
+    askedDebtRate=true;
+    setTimeout(()=>{
+      landingAddBubble('<span class="ai-question">Omtrent hvilken rente betaler du på lånet?</span>',`ai`);
+      setLandingQuick(['Ca. 2%','Ca. 3%','Ca. 4%','Ca. 5%','Over 6%']);
+      landingLocked=false;
+    },400);
+    return;
+  }
+  // If this was the rate follow-up answer, parse it
+  if(landingStep===2&&askedDebtRate&&collectedState.hasDebt){
+    const t=text.toLowerCase();
+    const m=t.match(/(\d[\d,.]*)/);if(m){const r=parseFloat(m[1].replace(',','.'));if(r>0&&r<50)collectedState.mortgageRate=r/100;}
+  }
+
+  landingStep++;
+
   setTimeout(()=>{
-    advChatMsgs.push({role:'user',content:`Jeg har nettopp hatt denne samtalen og ønsker en dypere analyse:\n${context}\n\nFortsett der vi slapp og gi meg en full investeringsanalyse. Start med egnethetsvurdering.`});
-    advCall();
+    if(landingStep<LANDING_QUESTIONS.length){
+      landingAddBubble(LANDING_QUESTIONS[landingStep].ask,'ai');
+      setLandingQuick(LANDING_QUESTIONS[landingStep].quick);
+    } else {
+      deliverLandingRec();
+    }
+    landingLocked=false;
   },400);
 }
 
-// Init landing
-setTimeout(()=>{
-  landingCall("Hei! Start samtalen med en varm velkomst på én setning. Still deretter umiddelbart det første spørsmålet: hvor mye penger snakker vi om — er det et engangsbeløp, månedlig sparing, eller begge? Be om konkrete tall. Vær direkte og uformell.");
-  setLandingQuick(["5 000 kr/mnd","10 000 kr/mnd","100 000 kr engangsbeløp","Jeg vet ikke ennå"]);
-},200);
+function deliverLandingRec(){
+  // Compute equity allocation
+  const cap=capacityFromInputs(collectedState.income||500000,collectedState.expenses||300000,collectedState.bufferMonths);
+  // Map risk comfort to riskLabel
+  const riskMap={'C':'Lav','N':'Middels','A':'Offensiv'};
+  const riskLabel=riskMap[collectedState.riskComfort]||'Middels';
+  const ar=applyCapacity(riskLabel,cap);
+  const alloc=ALLOC_TABLE[hBucket(collectedState.horizon)][RISK_SCORE[ar]??3];
+  const pAlloc=alloc==='Bank'?0:(typeof alloc==='number'?alloc:0);
 
-// ══════════════════════════════════════
-// ADVISORY CHAT (right panel)
-// ══════════════════════════════════════
-let advChatMsgs=[],advLocked=false;
-const ADV_SYSTEM=`Du er KapitalKompasset sin AI-rådgiver. Du fører en samtale for å kartlegge brukerens investeringsprofil, og oppdaterer grafen/analysen i sanntid.
+  const engKey=allocToEngKey(pAlloc);
+  const hKey=hKeyFromYears(collectedState.horizon);
+  const bKey=bufKey(collectedState.bufferMonths);
 
-## Informasjon du trenger
-- Egnethet (erfaring/utdanning med kapitalmarkedet — ja/nei)
-- Tidshorisont (antall år)
-- Risikovilje: Ingen / Meget lav / Lav / Middels / Offensiv / Høy
-- Årslønn etter skatt (NOK)
-- Årlige utgifter (NOK)
-- Buffer (antall måneder utgifter de har spart opp)
-- Startkapital (NOK)
-- Månedlig sparing (NOK)
+  // Title
+  const title=ENG.titles[engKey]?.[collectedState.riskComfort]||ENG.titles[engKey]?.N||'';
+  const horizNote=ENG.horizonNotes[hKey]||'';
 
-## FORMATERING — følg disse reglene alltid
-- Bruk HTML i alle svar:
-  - Lister og alternativer: <ul><li>...</li></ul>
-  - Avsnittsskille mellom spørsmål og foregående svar: <br>
-  - Viktige begreper: <strong>ord</strong>
-- Hold hvert svar kort. Aldri lange avsnitt med sammenhengende tekst.
-- Maks én setning introduksjon, deretter liste eller direkte spørsmål.
-
-## QUICK-svar (obligatorisk — send alltid etter hvert svar)
-Etter hvert svar, send denne blokken med 2–5 svaralternativer tilpasset NØYAKTIG det du nettopp spurte om:
-[QUICK:["Alternativ 1","Alternativ 2","Alternativ 3"]]
-
-Eksempler:
-- Spurte om egnethet → [QUICK:["Ja, erfaring med fond/verdipapirer","Ja, finans/økonomiutdanning","Nei, nybegynner"]]
-- Spurte om markedsfall → [QUICK:["Selge alt","Selge noe","Vente og beholde","Kjøpe mer"]]
-- Spurte om investeringsmål → [QUICK:["Bevare verdiene","Moderat vekst","God vekst over tid","Maksimal avkastning"]]
-- Spurte om horisont → [QUICK:["Under 3 år","3–7 år","7–15 år","Ca. 20 år","Over 30 år"]]
-- Spurte om atferd/psykologi → [QUICK:["Sover dårlig ved svingninger","Bekymrer meg ved store fall","Komfortabel med svingninger","Plages ikke"]]
-- Spurte om risikovilje → [QUICK:["Lav","Middels","Offensiv","Høy"]]
-- Spurte om buffer → [QUICK:["Under 1 måned","1–2 måneder","3–6 måneder","Over 6 måneder"]]
-- Spurte om inntekt → [QUICK:["Ca. 400 000 kr","Ca. 600 000 kr","Ca. 800 000 kr","Over 1 million"]]
-- Spurte om utgifter → [QUICK:["Ca. 200 000 kr","Ca. 300 000 kr","Ca. 400 000 kr","Over 500 000 kr"]]
-- Spurte om startkapital → [QUICK:["Ingen startkapital","100 000 kr","300 000 kr","500 000 kr","Over 1 million"]]
-- Spurte om månedlig sparing → [QUICK:["Ingen","1 000 kr/mnd","3 000 kr/mnd","5 000 kr/mnd","10 000 kr/mnd"]]
-- Etter anbefaling → [QUICK:["Hva betyr dette i praksis?","Hva om jeg velger høyere risiko?","Juster tallene selv","Start på nytt"]]
-
-## Egnethetsvurdering (start alltid her)
-Spør om de har erfaring med fond eller verdipapirer ELLER relevant utdanning (finans/økonomi). Hvis nei: still fire atferdsspørsmål ett om gangen.
-Atferdsspørsmål skår: Selge alt=1, Selge noe=2, Vente=3, Kjøpe mer=4
-Totalskår: 4-5=Lav, 6-8=Middels, 9-12=Offensiv, 13-16=Høy
-
-## Kapasitetslogikk (brukes internt)
-- Sparerate = (inntekt - utgifter) / inntekt per mnd
-  >30%=100%, 20-30%=max 80%, 10-20%=max 65%, 5-10%=max 50%, <5%=max 35%
-- Buffer under 1 mnd: trekk 2 risikonivåer ned. 1-2 mnd: trekk 1 ned.
-Valgt risikovilje begrenses av kapasiteten. Advar tydelig ved overskridelse.
-
-## Allokeringsmatrise
-| Horisont  | Ingen | Meget lav | Lav | Middels | Offensiv | Høy  |
-|-----------|-------|-----------|-----|---------|----------|------|
-| < 1 år    | Bank  | Bank      | Bank| Bank    | Bank     | Bank |
-| 1–3 år    | Bank  | Bank      | 0%  | 20%     | 35%      | 50%  |
-| 3–7 år    | Bank  | 0%        | 20% | 35%     | 50%      | 65%  |
-| 7–15 år   | Bank  | 20%       | 35% | 50%     | 65%      | 80%  |
-| 15+ år    | Bank  | 35%       | 50% | 65%     | 80%      | 100% |
-
-## Grafikk-oppdatering
-Når du har nok info, send denne blokken (fyll inn reelle verdier, send QUICK-blokken etterpå):
-[RENDER:{"startCapital":0,"monthly":5000,"horizon":15,"income":600000,"expenses":350000,"bufferMonths":3,"costS":0.007,"costB":0.003,"riskLabel":"Offensiv"}]
-
-For horizon: bruk ALLTID øvre grense av et intervall — "7–15 år" → 15, "3–7 år" → 7, "over 15 år" → 20, "ca. 20 år" → 20.
-
-## Regler
-- Les brukerens svar nøye. Svar ALLTID på det de faktisk sier.
-- Hvis brukeren kun svarer på deler av et spørsmål: oppsummer det du forstod og spør om det som mangler.
-- Hold svar korte. Aldri mer enn ett spørsmål om gangen.
-- Advar tydelig ved risiko over kapasitet.
-- Norsk bokmål alltid.
-- Du KAN nevne eksempler på populære norske og nordiske fond for å gjøre anbefalingen mer konkret (f.eks. KLP AksjeVerden Indeks, DNB Global Indeks, Storebrand Indeks - Alle Markeder, Alfred Berg Nordisk, Holberg Likviditet). Men du MÅ aldri anbefale ett spesifikt fond fremfor et annet. Illustrative eksempler er ok.
-- Når du gir en endelig anbefaling, inkluder alltid ett konkret neste steg med kontotype og bank/plattform-eksempler:
-  * Aksjer ≥ 80% → anbefal ASK (Aksjesparekonto). Eks: Nordnet, Kron, DNB, eller din egen bank.
-  * Aksjer 20–80% (obligasjoner > 20%) → anbefal kombinasjonsfond med 80–90% aksjeandel i stedet for å splitte mellom ASK og fondskonto. Disse kvalifiserer for ASK og er enklere å administrere. Påpek at kombinasjonsfond ofte er aktivt forvaltet — brukeren bør se etter lav forvaltningsavgift (helst under 0,5%) og om mulig passiv forvaltning. Eks: Nordnet, Kron, Sbanken, eller din egen bank.
-  * Aksjer < 20% → anbefal høyrentekonto. Eks: Bulder Bank, Sbanken, Lunar, eller din egen bank.
-  * Hvis brukeren er ung (under ~34 år) og har inntekt: nevn BSU som første prioritet (20% skattefradrag, maks 31 500 kr/år innskudd).
-- Banker og plattformer nevnt i anbefalingen utløser automatisk en disclaimer i grensesnittet — du trenger ikke skrive den selv.`;
-
-// Fund AND bank/platform names — inject disclaimer when any appear
-const FUND_NAMES = [
-  // Funds
-  'KLP','DNB Global','DNB Indeks','Storebrand Indeks','Storebrand Global',
-  'Alfred Berg','Holberg','Nordnet Indeks','SKAGEN','Odin Fond','Eika',
-  'Handelsbanken Indeks','Fidelity','Vanguard','BlackRock','iShares','Xtrackers','Lyxor',
-  // Banks / platforms
-  'Nordnet','Sbanken','SpareBank','DNB Nettbank','Kron','Bulder','Lunar',
-  'Gjensidige','Sparebanken','Storebrand Bank','Handelsbanken'
-];
-const BANK_NAMES = ['Nordnet','Sbanken','SpareBank','Kron','Bulder','Lunar','Gjensidige','Sparebanken','Storebrand Bank'];
-
-function injectFundDisclaimer(el){
-  const text = el.textContent || '';
-  const hasFund = FUND_NAMES.some(f => text.includes(f));
-  if(hasFund && !el.querySelector('.fund-disclaimer')){
-    const note = document.createElement('div');
-    note.className = 'fund-disclaimer';
-    const hasBank = BANK_NAMES.some(b => text.includes(b));
-    note.innerHTML = hasBank
-      ? '⚠️ <strong>Merk:</strong> Fondene og bankene/plattformene nevnt ovenfor er kun illustrative eksempler på populære alternativer som passer til denne profilen — dette er <em>ikke</em> en anbefaling om å velge ett spesifikt produkt eller leverandør fremfor et annet. Kombinasjonsfond er ofte aktivt forvaltet — se etter lav forvaltningsavgift (helst under 0,5%) og vurder passivt forvaltede alternativer der det finnes. Gjør egne undersøkelser, eller kontakt din bank eller en uavhengig rådgiver.'
-      : '⚠️ <strong>Merk:</strong> Fondene nevnt ovenfor er kun illustrative eksempler på populære alternativer som passer til denne profilen — dette er <em>ikke</em> en anbefaling om å velge ett spesifikt fond fremfor et annet. Kombinasjonsfond er ofte aktivt forvaltet — se etter lav forvaltningsavgift (helst under 0,5%) og vurder passivt forvaltede alternativer der det finnes. Gjør egne undersøkelser, eller kontakt din bank eller en uavhengig rådgiver.';
-    el.appendChild(note);
+  // Debt comparison text
+  let debtNote='';
+  if(collectedState.hasDebt&&collectedState.mortgageRate>0.05){
+    debtNote=`<br><strong>Merk om gjeld:</strong> Med en rente på ${(collectedState.mortgageRate*100).toFixed(0)}% er det sannsynlig at nedbetaling av gjeld gir bedre netto avkastning enn investering. Vurder å prioritere gjelden.`;
   }
+
+  const recHTML=`${title} ${horizNote}${debtNote}<br><br>${buildRecHTML(engKey,hKey,bKey,collectedState.riskComfort,'','')}`;
+  landingAddBubble(recHTML,'ai');
+
+  // Render chart
+  renderLandingChart({
+    lumpSum:collectedState.lumpSum,
+    monthly:collectedState.monthly,
+    years:collectedState.horizon,
+    mortgageRate:collectedState.mortgageRate,
+    includeInvest:pAlloc>0,
+    includeMortgage:collectedState.hasDebt
+  });
+
+  // Show deeper analysis button
+  setTimeout(()=>{
+    const d=document.createElement('div');d.className='bubble ai';
+    d.innerHTML=`Vil du se en fullstendig analyse med din eksakte porteføljeprofil og graf over tid?<br><br><button class="deeper-btn" onclick="triggerDeeper()">Se full analyse i KapitalKompasset →</button>`;
+    document.getElementById('landingMsgs').appendChild(d);
+    document.querySelector('#screenLanding .landing-chat').scrollTop=99999;
+    setLandingQuick(['Ja, vis meg full analyse','Nei, dette er nok']);
+  },600);
 }
 
+function triggerDeeper(){
+  goScreen('advisory');
+  // If mode not chosen yet, auto-choose AI
+  if(!advMode) chooseMode('ai');
+  else if(advMode==='manual') prefillManualFromState();
+}
+
+// Init landing
+setTimeout(()=>initLanding(),200);
+
+// ══════════════════════════════════════
+// ADVISORY CHAT — FIXED QUESTION FLOW
+// ══════════════════════════════════════
+let advStep=0;
+let advLocked=false;
+let advAskedDebtRate=false;
+
+// Same 5 questions as landing but phrased for the advisory context
+const ADV_QUESTIONS=[
+  {
+    ask:'Hei! Jeg er her for å hjelpe deg med en grundigere analyse. 📊<br><br><span class="ai-question">Har du erfaring med fond eller verdipapirer, eller relevant utdanning innen finans eller økonomi?</span>',
+    quick:['Ja, erfaring med fond','Ja, finans-/økonomiutdanning','Nei, nybegynner'],
+    parse(txt){/* suitability — stored but not blocking */}
+  },
+  {
+    ask:'<span class="ai-question">Hva er din investeringshorisont — altså ca. når planlegger du å bruke pengene?</span>',
+    quick:['Under 3 år','3–7 år','7–15 år','Over 15 år','Ca. 20 år','Over 30 år'],
+    parse(txt){LANDING_QUESTIONS[3].parse(txt);}  // reuse landing parser
+  },
+  {
+    ask:'<span class="ai-question">Hva er din årslønn etter skatt, og hva er de omtrentlige årlige utgiftene dine?</span><br>Dette brukes til å beregne din evne til å tåle svingninger.',
+    quick:['Lønn 400k, utgifter 250k','Lønn 600k, utgifter 350k','Lønn 800k, utgifter 450k','Over 1 million i lønn'],
+    parse(txt){
+      const nums=txt.match(/\d[\d\s]*/g)||[];
+      const vals=nums.map(n=>+n.replace(/\s/g,'')).filter(n=>n>1000).sort((a,b)=>b-a);
+      if(vals.length>=2){collectedState.income=vals[0];collectedState.expenses=vals[1];}
+      else if(vals.length===1)collectedState.income=vals[0];
+    }
+  },
+  {
+    ask:'<span class="ai-question">Hvor mange måneder utgifter har du som buffer — lett tilgjengelig om noe uventet skjer?</span>',
+    quick:['Under 1 måned','1–2 måneder','3–6 måneder','Over 6 måneder'],
+    parse(txt){LANDING_QUESTIONS[1].parse(txt);}
+  },
+  {
+    ask:'<span class="ai-question">Hva er startkapitalen og/eller månedlig sparing du planlegger?</span>',
+    quick:['Ingen startkapital','100 000 kr','500 000 kr','5 000 kr/mnd','10 000 kr/mnd'],
+    parse(txt){LANDING_QUESTIONS[0].parse(txt);}
+  }
+];
+
 function advAddBubble(html,role){
-  const processed = role==='ai' ? formatAIReply(html) : html;
+  const processed=role==='ai'?formatAIReply(html):html;
   const d=document.createElement('div');d.className=`bubble ${role}`;d.innerHTML=processed;
   document.getElementById('advChatHistory').appendChild(d);
   document.getElementById('advChatHistory').scrollTop=99999;
@@ -1087,79 +1114,75 @@ function advAddBubble(html,role){
 }
 function advShowTyping(){const d=advAddBubble('<div class="typing-dots"><span></span><span></span><span></span></div>','ai');d.id='aTyping';}
 function advRemoveTyping(){const t=document.getElementById('aTyping');if(t)t.remove();}
-function setAdvQuick(opts){const a=document.getElementById('advQuickRow');a.innerHTML='';(opts||[]).forEach(label=>{const b=document.createElement('button');b.className='adv-qbtn';b.textContent=label;b.onclick=()=>{document.getElementById('advInput').value=label;advSend();};a.appendChild(b);});}
+function setAdvQuick(opts){
+  const a=document.getElementById('advQuickRow');a.innerHTML='';
+  (opts||[]).forEach(label=>{
+    const b=document.createElement('button');b.className='adv-qbtn';b.textContent=label;
+    b.onclick=()=>{document.getElementById('advInput').value=label;advSend();};
+    a.appendChild(b);
+  });
+}
 
-async function advSend(){
+function initAdvChat(){
+  advStep=0;advAskedDebtRate=false;
+  document.getElementById('advChatHistory').innerHTML='';
+  document.getElementById('advQuickRow').innerHTML='';
+  setTimeout(()=>{
+    advAddBubble(ADV_QUESTIONS[0].ask,'ai');
+    setAdvQuick(ADV_QUESTIONS[0].quick);
+  },300);
+}
+
+function advSend(){
   if(advLocked)return;
   const inp=document.getElementById('advInput');
   const text=inp.value.trim();if(!text)return;
   inp.value='';setAdvQuick([]);
   advAddBubble(text,'user');
-  advChatMsgs.push({role:'user',content:text});
-  await advCall();
-}
-async function advCall(){
-  advLocked=true;document.getElementById('advSendBtn').disabled=true;
-  advShowTyping();
-  try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:900,system:ADV_SYSTEM,messages:advChatMsgs})});
-    const data=await res.json();
-    advRemoveTyping();
-    if(data.error){advAddBubble(`<em style="color:#b84040">Feil: ${data.error.message}</em>`,'ai');}
-    else{
-      let reply=data.content.map(b=>b.text||'').join('');
-      // Extract RENDER block
-      const renderMatch=reply.match(/\[RENDER:(\{.*?\})\]/s);
-      if(renderMatch){
-        try{renderResults({...JSON.parse(renderMatch[1]),skipBanner:false});closeDrawer();}
-        catch(e){console.warn('render parse',e);}
-        reply=reply.replace(/\[RENDER:\{.*?\}\]/s,'').trim();
-      }
-      // Extract QUICK block — AI-specified quick replies
-      const quickMatch=reply.match(/\[QUICK:(\[.*?\])\]/s);
-      let quickOpts=null;
-      if(quickMatch){
-        try{quickOpts=JSON.parse(quickMatch[1]);}catch(e){console.warn('quick parse',e);}
-        reply=reply.replace(/\[QUICK:\[.*?\]\]/s,'').trim();
-      }
-      if(reply)advAddBubble(reply,'ai');
-      advChatMsgs.push({role:'assistant',content:data.content.map(b=>b.text||'').join('')});
-      if(quickOpts&&quickOpts.length) setAdvQuick(quickOpts);
-      else setAdvQuick(["Fortsett","Forklar mer","Jeg vil korrigere noe"]);
+  advLocked=true;
+
+  const q=ADV_QUESTIONS[advStep];
+  if(q&&q.parse) q.parse(text);
+  advStep++;
+
+  setTimeout(()=>{
+    if(advStep<ADV_QUESTIONS.length){
+      advAddBubble(ADV_QUESTIONS[advStep].ask,'ai');
+      setAdvQuick(ADV_QUESTIONS[advStep].quick);
+    } else {
+      deliverAdvRec();
     }
-  }catch(e){advRemoveTyping();advAddBubble('<em style="color:#b84040">Tilkobling feilet.</em>','ai');}
-  advLocked=false;document.getElementById('advSendBtn').disabled=false;
+    advLocked=false;
+  },400);
 }
-function initAdvChat(){
-  advChatMsgs=[];
-  advCall_seed("Hei! Presenter deg kort (1 setning) og still første spørsmål om egnethet: har brukeren erfaring med fond eller verdipapirer, eller relevant utdanning? Husk å inkludere [QUICK:...]-blokken.");
+
+function deliverAdvRec(){
+  const inc=collectedState.income||600000;
+  const exp=collectedState.expenses||350000;
+  const cap=capacityFromInputs(inc,exp,collectedState.bufferMonths);
+  const riskMap={'C':'Lav','N':'Middels','A':'Offensiv'};
+  const riskLabel=riskMap[collectedState.riskComfort]||'Middels';
+  const ar=applyCapacity(riskLabel,cap);
+  const alloc=ALLOC_TABLE[hBucket(collectedState.horizon)][RISK_SCORE[ar]??3];
+  const pAlloc=alloc==='Bank'?0:(typeof alloc==='number'?alloc:0);
+  const engKey=allocToEngKey(pAlloc);
+  const hKey=hKeyFromYears(collectedState.horizon);
+  const bKey=bufKey(collectedState.bufferMonths);
+  const title=ENG.titles[engKey]?.[collectedState.riskComfort]||ENG.titles[engKey]?.N||'';
+  const horizNote=ENG.horizonNotes[hKey]||'';
+  advAddBubble(`${title} ${horizNote}<br><br>${buildRecHTML(engKey,hKey,bKey,collectedState.riskComfort,'','')}`, 'ai');
+  // Trigger chart render
+  renderResults({
+    startCapital:collectedState.lumpSum||0,
+    monthly:collectedState.monthly||0,
+    horizon:collectedState.horizon,
+    income:inc,expenses:exp,
+    bufferMonths:collectedState.bufferMonths,
+    costS:0.007,costB:0.003,
+    riskLabel:ar,skipBanner:false
+  });
 }
-async function advCall_seed(seed){
-  advLocked=true;document.getElementById('advSendBtn').disabled=true;
-  advShowTyping();
-  try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,system:ADV_SYSTEM,messages:[{role:'user',content:seed}]})});
-    const data=await res.json();
-    advRemoveTyping();
-    if(!data.error){
-      let reply=data.content.map(b=>b.text||'').join('');
-      reply=reply.replace(/\[RENDER:\{.*?\}\]/s,'').trim();
-      const quickMatch=reply.match(/\[QUICK:(\[.*?\])\]/s);
-      let quickOpts=null;
-      if(quickMatch){
-        try{quickOpts=JSON.parse(quickMatch[1]);}catch(e){}
-        reply=reply.replace(/\[QUICK:\[.*?\]\]/s,'').trim();
-      }
-      if(reply)advAddBubble(reply,'ai');
-      advChatMsgs.push({role:'assistant',content:data.content.map(b=>b.text||'').join('')});
-      if(quickOpts&&quickOpts.length) setAdvQuick(quickOpts);
-      else setAdvQuick(["Ja, jeg har erfaring","Ja, relevant utdanning","Nei, nybegynner"]);
-    }
-  }catch(e){advRemoveTyping();}
-  advLocked=false;document.getElementById('advSendBtn').disabled=false;
-}
+
 </script>
 </body>
 </html>
