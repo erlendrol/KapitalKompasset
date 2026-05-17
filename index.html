@@ -27,6 +27,8 @@ header{background:var(--ink);color:white;padding:0 2rem;height:56px;display:flex
 .nav-btn{border:none;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);padding:5px 14px;border-radius:50px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:500;transition:all 0.2s;}
 .nav-btn:hover{background:rgba(255,255,255,0.2);color:white;}
 .nav-btn.active{background:white;color:var(--ink);}
+.nav-btn.reset-btn{background:transparent;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.2);margin-left:8px;}
+.nav-btn.reset-btn:hover{background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.9);}
 
 /* ══════════════════════════════════════
    SCREEN SYSTEM
@@ -238,6 +240,39 @@ input[type=number]:focus{border-color:var(--teal);}
 .landing-chart-card canvas{display:block;}
 .landing-chart-card .chart-note{font-size:0.68rem;color:var(--ink-muted);margin-top:6px;text-align:center;line-height:1.4;}
 
+/* ── INFO DRAWER (bottom sheet) ── */
+.info-drawer{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid var(--cream-dark);box-shadow:0 -4px 24px rgba(26,26,46,0.1);z-index:300;transform:translateY(100%);transition:transform 0.3s ease;max-height:75vh;display:flex;flex-direction:column;}
+.info-drawer.open{transform:translateY(0);}
+.info-drawer-header{padding:0.9rem 1.5rem;border-bottom:1px solid var(--cream-dark);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.info-drawer-header h3{font-family:'DM Serif Display',serif;font-size:1.15rem;margin:0;}
+.info-drawer-close{background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--ink-muted);padding:0 4px;line-height:1;}
+.info-drawer-close:hover{color:var(--ink);}
+.info-drawer-body{padding:1.25rem 1.5rem 2rem;overflow-y:auto;max-width:760px;margin:0 auto;width:100%;}
+.info-drawer-body h4{font-family:'DM Serif Display',serif;font-size:1rem;margin:1.25rem 0 0.4rem;color:var(--teal);}
+.info-drawer-body h4:first-child{margin-top:0;}
+.info-drawer-body p{font-size:0.9rem;line-height:1.65;color:var(--ink-soft);margin-bottom:0.7rem;}
+.info-drawer-body .info-tip{background:var(--cream);border-left:3px solid var(--teal);padding:0.6rem 0.9rem;border-radius:4px;margin:0.5rem 0 1rem;font-size:0.85rem;}
+.info-drawer-backdrop{position:fixed;inset:0;background:rgba(26,26,46,0.3);z-index:299;opacity:0;pointer-events:none;transition:opacity 0.3s;}
+.info-drawer-backdrop.open{opacity:1;pointer-events:auto;}
+.info-link{color:var(--teal);text-decoration:underline;cursor:pointer;background:none;border:none;font:inherit;padding:0;}
+.info-link:hover{color:var(--ink);}
+
+/* floating info button (bottom-right) */
+.info-fab{position:fixed;bottom:16px;right:16px;z-index:150;background:white;color:var(--teal);border:1.5px solid var(--teal);border-radius:50px;padding:9px 16px;font-family:'DM Sans',sans-serif;font-size:0.8rem;font-weight:500;cursor:pointer;box-shadow:0 2px 12px rgba(42,127,127,0.15);transition:all 0.2s;display:flex;align-items:center;gap:6px;}
+.info-fab:hover{background:var(--teal);color:white;box-shadow:0 4px 16px rgba(42,127,127,0.25);}
+.info-fab svg{flex-shrink:0;}
+@media(max-width:680px){
+  .info-fab{bottom:12px;right:12px;padding:7px 12px;font-size:0.72rem;}
+}
+
+/* inline info box (in chat bubble) */
+.info-box-inline{background:var(--cream);border-left:3px solid var(--teal);padding:10px 12px;border-radius:6px;margin:4px 0;font-size:0.82rem;}
+.info-box-inline ul{margin:6px 0 0;padding-left:18px;}
+.info-box-inline li{margin-bottom:4px;line-height:1.5;}
+
+/* static info tip under debt question */
+.debt-tip{font-size:0.78rem;color:#7a4a0a;background:#fff8e6;border-left:3px solid #e8a060;padding:8px 12px;border-radius:6px;margin-top:8px;line-height:1.5;}
+
 .hidden{display:none!important;}
 ::-webkit-scrollbar{width:4px;}
 ::-webkit-scrollbar-thumb{background:var(--cream-dark);border-radius:4px;}
@@ -250,6 +285,7 @@ input[type=number]:focus{border-color:var(--teal);}
   <div class="header-nav">
     <button class="nav-btn active" id="navDecision" onclick="goScreen('landing')">Hva skal jeg gjøre?</button>
     <button class="nav-btn" id="navAdvisory" onclick="goScreen('advisory')">Dybdeanalyse</button>
+    <button class="nav-btn reset-btn" onclick="resetSession()" title="Start på nytt">↺ Nullstill</button>
   </div>
 </header>
 
@@ -337,8 +373,7 @@ input[type=number]:focus{border-color:var(--teal);}
             <div class="pill-group" id="suitGroup">
               <button class="pill" data-val="experience" onclick="selectPill(this,'suitGroup');updateSuit()">Erfaring med fond/verdipapirer</button>
               <button class="pill" data-val="education" onclick="selectPill(this,'suitGroup');updateSuit()">Relevant utdanning</button>
-              <button class="pill active teal" data-val="questions" onclick="selectPill(this,'suitGroup');updateSuit()">Usikker — svar på spørsmål</button>
-              <button class="pill" data-val="none" onclick="selectPill(this,'suitGroup');updateSuit()">Ingen erfaring</button>
+              <button class="pill active teal" data-val="none" onclick="selectPill(this,'suitGroup');updateSuit()">Ingen erfaring</button>
             </div>
             <div id="suitInfoExpert" class="hidden">
               <span class="lesMer" onclick="toggleLesMer()">Les mer om hva profilene innebærer ▾</span>
@@ -350,7 +385,7 @@ input[type=number]:focus{border-color:var(--teal);}
                 </ul>
               </div>
             </div>
-            <div id="suitInfoNone" class="info-box hidden">
+            <div id="suitInfoNone" class="info-box">
               <strong style="color:var(--teal);font-size:0.82rem;">Godt å vite før du starter:</strong>
               <ul>
                 <li><strong>Verdipapirer</strong> er aksjer og obligasjoner. En aksje kan gi høy avkastning — men også store tap. En obligasjon er tryggere, men gir lavere avkastning.</li>
@@ -358,8 +393,33 @@ input[type=number]:focus{border-color:var(--teal);}
                 <li><strong>Kostnader</strong> trekkes automatisk fra avkastningen. 0,5% kan over 20 år utgjøre hundretusener i tapt verdi.</li>
               </ul>
             </div>
-            <div id="mcBlock" style="margin-top:0.75rem;">
-              <div style="font-size:0.75rem;color:var(--ink-muted);margin-bottom:0.6rem;">Svar på spørsmålene for å fastsette din risikovilje:</div>
+          </div>
+          <!-- FINANSIELL SITUASJON -->
+          <div class="form-group">
+            <div class="section-title"><span class="num">2</span>Finansiell situasjon</div>
+            <div class="form-group"><label class="form-label">Årslønn etter skatt</label><div class="num-wrap"><span class="pfx">kr</span><input type="number" id="income" value="600000" min="0" step="10000"></div></div>
+            <div class="form-group"><label class="form-label">Årlige utgifter</label><div class="num-wrap"><span class="pfx">kr</span><input type="number" id="expenses" value="350000" min="0" step="10000"></div></div>
+            <div class="form-group"><label class="form-label">Investerbare eiendeler</label><div class="num-wrap"><span class="pfx">kr</span><input type="number" id="assets" value="0" min="0" step="10000"></div></div>
+            <div class="form-group"><label class="form-label">Gjeld</label><div class="num-wrap"><span class="pfx">kr</span><input type="number" id="debt" value="0" min="0" step="10000"></div></div>
+            <div class="form-group"><label class="form-label">Buffer (antall måneder utgifter)</label><div class="num-wrap"><span class="pfx">mnd</span><input type="number" id="bufferMonths" value="3" min="0" max="24" step="0.5" style="padding-left:44px;"></div></div>
+            <label class="form-label">Evne til å tåle svingninger</label>
+            <div class="cap-bar" id="capBar"><div class="cap-seg"></div><div class="cap-seg"></div><div class="cap-seg"></div><div class="cap-seg"></div><div class="cap-seg"></div></div>
+            <div class="cap-label" id="capLabel">Beregnes…</div>
+          </div>
+          <!-- RISIKOVILJE -->
+          <div class="form-group">
+            <div class="section-title"><span class="num">3</span>Risikovilje</div>
+            <div id="riskFromMCNote" class="hidden" style="font-size:0.75rem;color:var(--teal);margin-bottom:0.5rem;font-weight:500;"></div>
+            <div class="pill-group" id="riskGroup">
+              <button class="pill" data-val="Lav" onclick="selectPill(this,'riskGroup');selectedRisk='Lav';toggleMCBlock(false);updateCap()">Lav</button>
+              <button class="pill" data-val="Middels" onclick="selectPill(this,'riskGroup');selectedRisk='Middels';toggleMCBlock(false);updateCap()">Middels</button>
+              <button class="pill active teal" data-val="Offensiv" onclick="selectPill(this,'riskGroup');selectedRisk='Offensiv';toggleMCBlock(false);updateCap()">Offensiv</button>
+              <button class="pill" data-val="Høy" onclick="selectPill(this,'riskGroup');selectedRisk='Høy';toggleMCBlock(false);updateCap()">Høy</button>
+              <button class="pill" data-val="questions" onclick="selectPill(this,'riskGroup');toggleMCBlock(true)">Usikker — svar på spørsmål</button>
+            </div>
+            <div style="font-size:0.7rem;color:var(--ink-muted);margin-top:5px;">«Offensiv» = høy aksjeandel · «Høy» = maksimal aksjeandel</div>
+            <div id="mcBlock" class="hidden" style="margin-top:0.75rem;">
+              <div style="font-size:0.75rem;color:var(--ink-muted);margin-bottom:0.6rem;">Svar på de fire spørsmålene under — risikoviljen fastsettes automatisk:</div>
               <div class="mc-q"><p>1. Hvis porteføljen falt 20% på tre måneder, hva ville du gjøre?</p>
                 <div class="mc-opt" data-q="1" data-score="1" onclick="selectMC(this)">Selge alt umiddelbart</div>
                 <div class="mc-opt" data-q="1" data-score="2" onclick="selectMC(this)">Selge noe for å redusere risiko</div>
@@ -387,40 +447,14 @@ input[type=number]:focus{border-color:var(--teal);}
               <div id="mcResult" style="font-size:0.77rem;color:var(--teal);font-weight:500;margin-top:2px;"></div>
             </div>
           </div>
-          <!-- FINANSIELL SITUASJON -->
-          <div class="form-group">
-            <div class="section-title"><span class="num">2</span>Finansiell situasjon</div>
-            <div class="form-group"><label class="form-label">Årslønn etter skatt</label><div class="num-wrap"><span class="pfx">kr</span><input type="number" id="income" value="600000" min="0" step="10000"></div></div>
-            <div class="form-group"><label class="form-label">Årlige utgifter</label><div class="num-wrap"><span class="pfx">kr</span><input type="number" id="expenses" value="350000" min="0" step="10000"></div></div>
-            <div class="form-group"><label class="form-label">Investerbare eiendeler</label><div class="num-wrap"><span class="pfx">kr</span><input type="number" id="assets" value="0" min="0" step="10000"></div></div>
-            <div class="form-group"><label class="form-label">Gjeld</label><div class="num-wrap"><span class="pfx">kr</span><input type="number" id="debt" value="0" min="0" step="10000"></div></div>
-            <div class="form-group"><label class="form-label">Buffer (antall måneder utgifter)</label><div class="num-wrap"><span class="pfx">mnd</span><input type="number" id="bufferMonths" value="3" min="0" max="24" step="0.5" style="padding-left:44px;"></div></div>
-            <label class="form-label">Evne til å tåle svingninger</label>
-            <div class="cap-bar" id="capBar"><div class="cap-seg"></div><div class="cap-seg"></div><div class="cap-seg"></div><div class="cap-seg"></div><div class="cap-seg"></div></div>
-            <div class="cap-label" id="capLabel">Beregnes…</div>
-          </div>
-          <!-- RISIKOVILJE -->
-          <div class="form-group">
-            <div class="section-title"><span class="num">3</span>Risikovilje</div>
-            <div id="riskFromMCNote" class="hidden" style="font-size:0.75rem;color:var(--teal);margin-bottom:0.5rem;font-weight:500;"></div>
-            <div class="pill-group" id="riskGroup">
-              <button class="pill" data-val="Ingen" onclick="selectPill(this,'riskGroup');selectedRisk='Ingen';updateCap()">Ingen</button>
-              <button class="pill" data-val="Meget lav" onclick="selectPill(this,'riskGroup');selectedRisk='Meget lav';updateCap()">Meget lav</button>
-              <button class="pill" data-val="Lav" onclick="selectPill(this,'riskGroup');selectedRisk='Lav';updateCap()">Lav</button>
-              <button class="pill" data-val="Middels" onclick="selectPill(this,'riskGroup');selectedRisk='Middels';updateCap()">Middels</button>
-              <button class="pill active teal" data-val="Offensiv" onclick="selectPill(this,'riskGroup');selectedRisk='Offensiv';updateCap()">Offensiv</button>
-              <button class="pill" data-val="Høy" onclick="selectPill(this,'riskGroup');selectedRisk='Høy';updateCap()">Høy</button>
-            </div>
-            <div style="font-size:0.7rem;color:var(--ink-muted);margin-top:5px;">«Offensiv» = høy aksjeandel · «Høy» = maksimal aksjeandel</div>
-          </div>
           <!-- INVESTERING -->
           <div class="form-group">
             <div class="section-title"><span class="num">4</span>Investering</div>
             <div class="form-group"><label class="form-label">Startkapital (NOK)</label><div class="num-wrap"><span class="pfx">kr</span><input type="number" id="startCapital" value="0" min="0" step="10000"></div></div>
             <div class="form-group"><label class="form-label">Månedlig sparing (NOK)</label><div class="num-wrap"><span class="pfx">kr</span><input type="number" id="monthlySavings" value="5000" min="0" step="500"></div></div>
             <div class="form-group">
-              <label class="form-label">Tidshorisont: <span class="slider-value" id="horizonVal">15 år</span></label>
-              <input type="range" id="horizon" min="1" max="40" value="15" oninput="updateSlider()">
+              <label class="form-label">Tidshorisont: <span class="slider-value" id="horizonVal">20 år</span></label>
+              <input type="range" id="horizon" min="1" max="40" value="20" oninput="updateSlider()">
               <div class="slider-labels"><span>1 år</span><span>40 år</span></div>
             </div>
           </div>
@@ -475,6 +509,7 @@ input[type=number]:focus{border-color:var(--teal);}
           </div>
         </div>
         <div class="result-disclaimer" id="capNote"></div>
+        <div id="recBoxContent" style="margin-top:1.25rem;"></div>
       </div>
     </div>
   </div><!-- /advisory-body -->
@@ -493,9 +528,17 @@ const PROFILES=[{name:"Forsiktig",stocks:0,bonds:1,color:"#5c7a9e"},{name:"Moder
 // Risk labels: Ingen=0, Meget lav=1, Lav=2, Middels=3, Offensiv=4, Høy=5
 const RISK_SCORE={"Ingen":0,"Meget lav":1,"Lav":2,"Middels":3,"Offensiv":4,"Høy":5};
 const RISK_LABELS=["Ingen","Meget lav","Lav","Middels","Offensiv","Høy"];
-const ALLOC_TABLE=[["Bank","Bank","Bank","Bank","Bank","Bank"],["Bank","Bank",0,0.2,0.35,0.5],["Bank",0,0.2,0.35,0.5,0.65],["Bank",0.2,0.35,0.5,0.65,0.8],["Bank",0.35,0.5,0.65,0.8,1]];
-// Horizon buckets: <3yr=1, 3-7yr=2, 7-10yr=3 (step-down zone), 10+yr=4 (full allocation)
-function hBucket(y){if(y<1)return 0;if(y<=3)return 1;if(y<=7)return 2;if(y<=10)return 3;return 4;}
+// New 6-row matrix: <1yr, 1-3yr, 3-6yr, 6-10yr, 10-15yr, 15+yr
+// Columns: Ingen, MegLav, Lav, Middels, Offensiv, Høy
+const ALLOC_TABLE=[
+  ["Bank","Bank","Bank","Bank","Bank","Bank"],       // <1yr
+  ["Bank","Bank",0,0.2,0.35,0.5],                    // 1-3yr
+  ["Bank",0,0.2,0.35,0.5,0.65],                      // 3-6yr
+  ["Bank",0.2,0.35,0.5,0.65,0.8],                    // 6-10yr
+  ["Bank",0.35,0.5,0.65,0.8,1.0],                    // 10-15yr
+  ["Bank",0.35,0.5,0.65,1.0,1.0]                     // 15+yr (Offensiv and Høy both 100%)
+];
+function hBucket(y){if(y<1)return 0;if(y<=3)return 1;if(y<=6)return 2;if(y<=10)return 3;if(y<=15)return 4;return 5;}
 
 // ── CAPACITY LOGIC — aligned with long-term index fund philosophy ──
 // Only genuine risk factors cause a step-down:
@@ -553,6 +596,51 @@ function goScreen(name){
   document.getElementById('screen'+name.charAt(0).toUpperCase()+name.slice(1)).classList.add('active');
   document.getElementById('navDecision').classList.toggle('active',name==='landing');
   document.getElementById('navAdvisory').classList.toggle('active',name==='advisory');
+}
+
+// ══════════════════════════════════════
+// SESSION RESET
+// ══════════════════════════════════════
+function resetSession(){
+  // Reset shared state
+  collectedState={
+    lumpSum:0,monthly:0,horizon:15,
+    bufferMonths:3,hasDebt:false,mortgageRate:0.03,debtLabel:'lån',
+    riskWillingness:'Offensiv',riskComfort:'N',
+    income:0,expenses:0,suitability:'beginner'
+  };
+
+  // Reset landing page
+  landingStep=0;landingLocked=false;askedDebtRate=false;
+  document.getElementById('landingMsgs').innerHTML='';
+  document.getElementById('landingQuick').innerHTML='';
+  const cw=document.getElementById('landingChartWrap');if(cw)cw.classList.add('hidden');
+  if(landingChartInst){landingChartInst.destroy();landingChartInst=null;}
+  setTimeout(()=>initLanding(),100);
+
+  // Reset advisory tool
+  advMode=null;advStep=0;advLocked=false;advAskedDebtRate=false;
+  document.getElementById('modeChooser').classList.remove('hidden');
+  document.getElementById('modeSwitchBar').classList.add('hidden');
+  document.getElementById('advChatHistory').innerHTML='';
+  document.getElementById('advQuickRow').innerHTML='';
+  document.getElementById('aiChatPane').style.display='none';
+  document.getElementById('manualPane').classList.add('hidden');
+  // Reset results panel
+  document.getElementById('emptyState').classList.remove('hidden');
+  document.getElementById('resultsContent').classList.add('hidden');
+  if(typeof chartInst!=='undefined'&&chartInst){chartInst.destroy();chartInst=null;}
+
+  // Go to landing
+  goScreen('landing');
+}
+function openInfoDrawer(){
+  document.getElementById('infoDrawer').classList.add('open');
+  document.getElementById('infoDrawerBackdrop').classList.add('open');
+}
+function closeInfoDrawer(){
+  document.getElementById('infoDrawer').classList.remove('open');
+  document.getElementById('infoDrawerBackdrop').classList.remove('open');
 }
 
 // ══════════════════════════════════════
@@ -621,14 +709,22 @@ function updateCap(){
 }
 function updateSuit(){
   const pill=document.querySelector('#suitGroup .pill.active');
-  const val=pill?pill.dataset.val:'questions';
-  document.getElementById('mcBlock').classList.toggle('hidden',val==='experience'||val==='education');
-  document.getElementById('suitInfoExpert').classList.toggle('hidden',val==='none'||val==='questions');
+  const val=pill?pill.dataset.val:'none';
+  // Expert info (collapsible) only for experience/education
+  document.getElementById('suitInfoExpert').classList.toggle('hidden',val==='none');
+  // "Godt å vite" box is always shown for none (beginners), hidden otherwise
   document.getElementById('suitInfoNone').classList.toggle('hidden',val!=='none');
 }
 function toggleLesMer(){
   const el=document.getElementById('lesMerContent');el.classList.toggle('hidden');
   document.querySelector('.lesMer').textContent=el.classList.contains('hidden')?'Les mer om hva profilene innebærer ▾':'Skjul ▴';
+}
+function toggleMCBlock(show){
+  document.getElementById('mcBlock').classList.toggle('hidden',!show);
+  if(!show){
+    // User picked a direct risk level — hide the MC note
+    document.getElementById('riskFromMCNote').classList.add('hidden');
+  }
 }
 function selectMC(el){
   const q=el.dataset.q;
@@ -640,9 +736,8 @@ function selectMC(el){
   // Scores map to new labels: Lav / Middels / Offensiv / Høy
   const r=t<=5?"Lav":t<=8?"Middels":t<=11?"Offensiv":"Høy";
   document.getElementById('mcResult').textContent=`Anbefalt risikovilje: ${r}`;
-  document.getElementById('riskFromMCNote').textContent=`Fra spørsmål: ${r} (kan overstyres nedenfor)`;
+  document.getElementById('riskFromMCNote').textContent=`Fra spørsmål: ${r}`;
   document.getElementById('riskFromMCNote').classList.remove('hidden');
-  document.querySelectorAll('#riskGroup .pill').forEach(p=>{p.classList.toggle('active',p.dataset.val===r);p.classList.toggle('teal',p.dataset.val===r);});
   selectedRisk=r;updateCap();
 }
 
@@ -721,6 +816,20 @@ function renderResults(params){
     {data:p5,borderColor:'transparent',backgroundColor:'rgba(42,127,127,0.12)',fill:'-1',pointRadius:0,tension:0.4,label:'5%'},
     {data:cash,borderColor:'#aaa',borderDash:[5,4],backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0.4,fill:false,label:'Bankkonto'},
   ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.parsed.y)}`}}},scales:{x:{ticks:{maxTicksLimit:10,font:{family:'DM Sans',size:11},color:'#7a7a9a'},grid:{color:'#f0ece3'}},y:{ticks:{font:{family:'DM Sans',size:11},color:'#7a7a9a',callback:v=>fmt(v)},grid:{color:'#f0ece3'}}}}});
+
+  // Inject rec-box into results panel (for manual mode, or any caller that sets showRecBox)
+  const recBoxEl = document.getElementById('recBoxContent');
+  if(recBoxEl && params.showRecBox){
+    const engKey = allocToEngKey(pAlloc);
+    const hKey   = hKeyFromYears(horizon);
+    const bKey   = bufKey(params.bufferMonths||3);
+    const rChar  = params.riskComfort||'N';
+    const bufNote= bufferAdvisoryNote(cap.bufferFlag, params.monthly||0);
+    recBoxEl.innerHTML = buildRecHTML(engKey, hKey, bKey, rChar, bufNote, '', Math.round(pAlloc*100));
+  } else if(recBoxEl){
+    recBoxEl.innerHTML = '';
+  }
+
   return {p50:p50[horizon-1],p5:p5[horizon-1],p95:p95[horizon-1],profile,pAlloc,ar,cap};
 }
 
@@ -734,7 +843,9 @@ function calculate(){
     bufferMonths:+document.getElementById('bufferMonths').value||0,
     costS:+document.getElementById('costStocks').value/100,
     costB:+document.getElementById('costBonds').value/100,
-    riskLabel:selectedRisk
+    riskLabel:selectedRisk,
+    showRecBox:true,
+    riskComfort:'N'  // manual mode has no behaviour question — neutral is the assumption
   });
   closeDrawer();
 }
@@ -777,16 +888,26 @@ function injectFundDisclaimer(el){
 // Landing growth chart
 let landingChartInst=null;
 function renderLandingChart(p){
-  const {lumpSum=0,monthly=0,years=15,mortgageRate=0.03,debtLabel='lån',includeInvest=true,includeMortgage=false}=p;
+  const {lumpSum=0,monthly=0,years=15,mortgageRate=0.03,debtLabel='lån',stockFraction=1.0,includeInvest=true,includeMortgage=false}=p;
   const wrap=document.getElementById('landingChartWrap');
   wrap.classList.remove('hidden');
-  const INVEST_RETURN=0.07,SAVINGS_RETURN=0.025;
+  // Expected returns: stocks 7% (gross, cost-adjusted via MC elsewhere; here flat 7%)
+  // Bank: 2.5% nominal × (1 - 0.22 tax on interest) = 1.95% net
+  // Mortgage: nominal × (1 - 0.22 deduction loss) → net "return" from paying down
+  const STOCK_R=0.07, BOND_R=0.04, CASH_NOMINAL=0.025;
+  const TAX=0.22;
+  const CASH_NET = CASH_NOMINAL * (1 - TAX);                // 1.95%
+  const MORTGAGE_NET = mortgageRate * (1 - TAX);             // e.g. 3% → 2.34%
+  const nonStock=1-stockFraction;
+  // Non-stock portion: half bonds (not taxed here as ASK-held), half cash (taxed)
+  const INVEST_RETURN = stockFraction*STOCK_R + nonStock*0.5*BOND_R + nonStock*0.5*CASH_NET;
+  const SAVINGS_RETURN = CASH_NET;
   const labels=[],investSeries=[],mortgageSeries=[],savingsSeries=[];
   for(let yr=1;yr<=years;yr++){
     labels.push(`År ${yr}`);
     const lI=Math.pow(1+INVEST_RETURN,yr),aI=monthly>0?monthly*12*((Math.pow(1+INVEST_RETURN,yr)-1)/INVEST_RETURN):0;
     const lS=Math.pow(1+SAVINGS_RETURN,yr),aS=monthly>0?monthly*12*((Math.pow(1+SAVINGS_RETURN,yr)-1)/SAVINGS_RETURN):0;
-    const lM=Math.pow(1+mortgageRate,yr),aM=monthly>0?monthly*12*((Math.pow(1+mortgageRate,yr)-1)/mortgageRate):0;
+    const lM=Math.pow(1+MORTGAGE_NET,yr),aM=monthly>0?monthly*12*((Math.pow(1+MORTGAGE_NET,yr)-1)/MORTGAGE_NET):0;
     if(includeInvest) investSeries.push(Math.round(lumpSum*lI+aI));
     if(includeMortgage) mortgageSeries.push(Math.round(lumpSum*lM+aM));
     savingsSeries.push(Math.round(lumpSum*lS+aS));
@@ -802,10 +923,17 @@ function renderLandingChart(p){
   ].filter(Boolean).join('');
   const parts=[];if(lumpSum>0)parts.push(fmt(lumpSum)+' engangsbeløp');if(monthly>0)parts.push(fmt(monthly)+'/mnd');
   const headline=(parts.join(' + ')||'Beregning')+` over ${years} år`;
+  const returnLabel = `${(INVEST_RETURN*100).toFixed(1)}% forventet årlig avkastning (${Math.round(stockFraction*100)}% aksjer)`;
+  let noteExtra = '';
+  if(includeMortgage){
+    noteExtra = ` Bankkonto og nedbetaling av lån er vist netto etter 22% skatt på renter (hhv. ${(CASH_NET*100).toFixed(2)}% og ${(MORTGAGE_NET*100).toFixed(2)}%).`;
+  } else {
+    noteExtra = ` Bankkonto er vist netto etter 22% skatt på renter (${(CASH_NET*100).toFixed(2)}%).`;
+  }
   wrap.innerHTML=`<div class="landing-chart-card">
     <div class="chart-header"><span class="chart-headline">${headline}</span><div class="chart-legend">${legendItems}</div></div>
     <div class="chart-canvas-wrap"><canvas id="landingChart"></canvas></div>
-    <div class="chart-note">Illustrerende beregning — investering basert på forventet 7% geometrisk avkastning etter kostnader</div>
+    <div class="chart-note">Illustrerende beregning — investering basert på ${returnLabel} etter kostnader.${noteExtra}</div>
   </div>`;
   if(landingChartInst)landingChartInst.destroy();
   landingChartInst=new Chart(document.getElementById('landingChart').getContext('2d'),{
@@ -820,7 +948,7 @@ function renderLandingChart(p){
 // ══════════════════════════════════════
 // RECOMMENDATION ENGINE
 // ══════════════════════════════════════
-const ENG = {"titles":{"0":{"C":"Du er forsiktig, og å holde alt i sparing er riktig for deg akkurat nå.","N":"Med din situasjon og horisont er sparing på høyrentekonto det mest fornuftige.","A":"Du er komfortabel med risiko, men situasjonen tilsier at trygg sparing er riktig nå."},"20":{"C":"En forsiktig start med litt aksjeeksponering passer godt til din profil.","N":"20% aksjer gir litt vekstpotensial med begrenset risiko.","A":"Du ønsker mer, men din situasjon tilsier at 20% aksjer er riktig utgangspunkt."},"35":{"C":"35% aksjer er et trygt valg som gir noe vekst uten for store svingninger.","N":"35% aksjer er et godt balansert valg for din situasjon.","A":"Du er risikovillig, men situasjonen din tilsier en moderat start med 35% aksjer."},"50":{"C":"50% aksjer er et solid kompromiss mellom vekst og stabilitet.","N":"En halvt-halvt-fordeling er et klassisk balansert valg.","A":"Du tåler svingninger godt — 50% aksjer balanserer avkastning og risiko fint."},"65":{"C":"65% aksjer gir god vekst over tid. Husk at svingninger er normalt og midlertidige.","N":"65% aksjer er et vekstorientert valg som passer din horisont og økonomi.","A":"Du er offensiv og situasjonen støtter 65% aksjer. Et solid valg for langsiktig vekst."},"80":{"C":"80% aksjer er offensivt, men din lange horisont gjør det forsvarlig.","N":"80% aksjer er et godt langsiktig valg. Tid reduserer risikoen betraktelig.","A":"80% aksjer passer din risikovilje og horisont. Tenk langsiktig ved markedsfall."},"100":{"C":"100% aksjer innebærer store svingninger. Din horisont gjør det mulig — hold ut ved fall.","N":"100% aksjer er det mest offensive valget, men historisk det beste over tid.","A":"100% aksjer passer deg godt. Svingninger er normalt — ikke selg i panikk."}},"horizonNotes":{"S":"Med kort tidshorisont er det viktig å ikke ta for mye risiko — pengene kan bli trengt snart.","M":"Et mellomlangt perspektiv gir rom for noe risiko. Markedet kan svinge, men har tid til å hente seg inn.","L":"Lang horisont er din største fordel — svingninger underveis er normalt og midlertidige.","VL":"Svært lang horisont betyr at du kan ignorere kortsiktige svingninger. Tid er din beste venn."},"bufferNotes":{"L":"⚠️ Bufferen din er lav. Bygg den opp til 2–3 måneder utgifter før du øker investeringene.","M":"Bufferen er OK, men litt mer ville gi ekstra trygghet ved uventede utgifter.","H":""},"steps":{"0":["Opprett en høyrentekonto hos Bulder Bank, Sbanken, Lunar eller din bank","Sett opp automatisk månedlig overføring","La renten jobbe for deg — trygt og enkelt"],"20":["Opprett en ASK (aksjesparekonto) for aksjedelen","Velg et globalt indeksfond med lav kostnad til aksjedelen (20%)","Plasser resten (80%) i en høyrentekonto","Sett opp automatisk månedlig sparing til begge"],"35":["Opprett en ASK (aksjesparekonto) for aksjedelen","Velg et globalt indeksfond med lav kostnad til aksjedelen (35%)","Plasser resten (65%) i en høyrentekonto","Sett opp automatisk månedlig sparing til begge","Alternativt: ett kombinasjonsfond i ASK — enklere men velg lav kostnad"],"50":["Opprett en ASK (aksjesparekonto) for aksjedelen","Velg et globalt indeksfond til aksjedelen (50%)","Plasser resten (50%) i høyrentekonto eller rentefond","Alternativt: ett kombinasjonsfond med 80% aksjer i ASK — kvalifiserer for ASK og er enklere","Se etter lav forvaltningsavgift — helst under 0,5%"],"65":["Opprett en ASK (aksjesparekonto) for aksjedelen","Velg et globalt indeksfond med lav kostnad (65% av sparingen)","Plasser resten (35%) i en høyrentekonto","Alternativt: kombinasjonsfond 80% aksjer i ASK — se etter lav kostnad","Ikke selg ved markedsfall — hold fast og tenk langsiktig"],"80":["Opprett en ASK (aksjesparekonto) hos Nordnet, Kron eller din bank","Velg et globalt aksjeindeksfond med lave kostnader","Sett opp automatisk månedlig sparing","Ikke selg ved markedsfall — hold fast og tenk langsiktig"],"100":["Opprett en ASK (aksjesparekonto) hos Nordnet, Kron eller din bank","Velg et bredt globalt aksjeindeksfond med lave kostnader","Sett opp automatisk månedlig sparing","Forvent store svingninger — det er normalt. Hold ut og tenk langsiktig"]},"products":{"0":"Høyrentekonto (0% aksjer)","20":"20% aksjer i ASK + 80% høyrentekonto","35":"35% aksjer i ASK + 65% høyrentekonto","50":"50% aksjer i ASK + 50% høyrentekonto eller rentefond","65":"65% aksjer i ASK + 35% høyrentekonto","80":"80% aksjer · Globalt aksjeindeksfond i ASK","100":"100% aksjer · Bredt globalt aksjeindeksfond i ASK"},"nextSteps":{"0":"Opprett en <strong>høyrentekonto</strong> hos Bulder Bank, Sbanken, Lunar eller din bank. Enkelt, trygt og fleksibelt.","20":"Del sparingen: <strong>20% i en ASK</strong> (globalt indeksfond, lav kostnad) + <strong>80% i en høyrentekonto</strong> hos Bulder, Sbanken eller din bank.","35":"Del sparingen: <strong>35% i en ASK</strong> (globalt indeksfond, lav kostnad) + <strong>65% i en høyrentekonto</strong>. Alternativt: ett kombinasjonsfond med 80% aksjer i ASK — enklere å administrere, men se etter lav kostnad (under 0,5%).","50":"Del sparingen: <strong>50% i en ASK</strong> (globalt indeksfond) + <strong>50% i en høyrentekonto eller rentefond</strong>. Alternativt: ett kombinasjonsfond med 80% aksjer i ASK — kvalifiserer for ASK og er enklere, men ofte aktivt forvaltet.","65":"Del sparingen: <strong>65% i en ASK</strong> (globalt indeksfond) + <strong>35% i en høyrentekonto</strong>. Alternativt: kombinasjonsfond 80% aksjer i ASK. Nordnet, Kron eller din bank.","80":"Opprett en <strong>ASK</strong> hos Nordnet, Kron eller din bank, og start sparing i et globalt indeksfond med lave kostnader.","100":"Opprett en <strong>ASK</strong> hos Nordnet, Kron eller din bank, og start sparing i et bredt globalt indeksfond med lave kostnader."},"flipNotes":{"0":"Hadde du investert i aksjer i stedet, ville pengene historisk vokst mer — men med svingninger du kanskje ikke er klar for akkurat nå.","20":"Med høyere aksjeandel ville du fått mer svingninger, men også høyere forventet avkastning over tid.","35":"En mer offensiv profil ville gitt mer svingninger men potensielt bedre langsiktig avkastning.","50":"Mer aksjer gir mer svingninger men historisk bedre langsiktig avkastning. Mindre aksjer gir mer stabilitet men lavere vekst.","65":"En mer aggressiv profil ville gitt mer svingninger. En mer defensiv gitt mer stabilitet — begge er gyldige valg.","80":"100% aksjer ville gitt maksimal vekst over tid, men også de største svingningene underveis.","100":"En mer forsiktig profil ville redusert svingningene, men historisk gitt lavere langsiktig avkastning."}};
+const ENG = {"titles":{"0":{"C":"Du er forsiktig, og å holde alt i sparing er riktig for deg akkurat nå.","N":"Med din situasjon og horisont er sparing på høyrentekonto det mest fornuftige.","A":"Du er komfortabel med risiko, men situasjonen tilsier at trygg sparing er riktig nå."},"20":{"C":"En forsiktig start med litt aksjeeksponering passer godt til din profil.","N":"20% aksjer gir litt vekstpotensial med begrenset risiko.","A":"Du ønsker mer, men din situasjon tilsier at 20% aksjer er riktig utgangspunkt."},"35":{"C":"35% aksjer er et trygt valg som gir noe vekst uten for store svingninger.","N":"35% aksjer er et godt balansert valg for din situasjon.","A":"Du er risikovillig, men situasjonen din tilsier en moderat start med 35% aksjer."},"50":{"C":"50% aksjer er et solid kompromiss mellom vekst og stabilitet.","N":"En halvt-halvt-fordeling er et klassisk balansert valg.","A":"Du tåler svingninger godt — 50% aksjer balanserer avkastning og risiko fint."},"65":{"C":"65% aksjer gir god vekst over tid. Husk at svingninger er normalt og midlertidige.","N":"65% aksjer er et vekstorientert valg som passer din horisont og økonomi.","A":"Du er offensiv og situasjonen støtter 65% aksjer. Et solid valg for langsiktig vekst."},"80":{"C":"80% aksjer er offensivt, men din lange horisont gjør det forsvarlig.","N":"80% aksjer er et godt langsiktig valg. Tid reduserer risikoen betraktelig.","A":"80% aksjer passer din risikovilje og horisont. Tenk langsiktig ved markedsfall."},"100":{"C":"100% aksjer innebærer store svingninger. Din horisont gjør det mulig — hold ut ved fall.","N":"100% aksjer er det mest offensive valget, men historisk det beste over tid.","A":"100% aksjer passer deg godt. Svingninger er normalt — ikke selg i panikk."}},"horizonNotes":{"S":"Med kort tidshorisont er det viktig å ikke ta for mye risiko — pengene kan bli trengt snart.","M":"Et mellomlangt perspektiv gir rom for noe risiko. Markedet kan svinge, men har tid til å hente seg inn.","L":"Lang horisont er din største fordel — svingninger underveis er normalt og midlertidige.","VL":"Svært lang horisont betyr at du kan ignorere kortsiktige svingninger. Tid er din beste venn."},"bufferNotes":{"L":"⚠️ Bufferen din er lav. Bygg den opp til 2–3 måneder utgifter før du øker investeringene.","M":"Bufferen er OK, men litt mer ville gi ekstra trygghet ved uventede utgifter.","H":""},"steps":{"0":["Opprett en høyrentekonto hos Bulder Bank, Sbanken, Lunar eller din bank","Sett opp automatisk månedlig overføring","La renten jobbe for deg — trygt og enkelt"],"20":["Valg 1: ASK for aksjedelen + høyrentekonto for rentedelen","Valg 2: Fondskonto med ett kombinasjonsfond (ca. 20% aksjer)","Velg det som passer deg best — et kombinasjonsfond er enklere, men ofte litt dyrere","Sett opp automatisk månedlig sparing"],"35":["Valg 1: ASK for aksjedelen + høyrentekonto for rentedelen","Valg 2: Fondskonto med ett kombinasjonsfond (ca. 35% aksjer)","Velg det som passer deg best — et kombinasjonsfond er enklere, men ofte litt dyrere","Sett opp automatisk månedlig sparing"],"50":["Valg 1: ASK for aksjedelen + høyrentekonto eller rentefond for rentedelen","Valg 2: Fondskonto med ett kombinasjonsfond (ca. 50% aksjer)","Velg det som passer deg best — et kombinasjonsfond er enklere, men ofte litt dyrere","Se etter lav forvaltningsavgift (helst under 0,5%)"],"65":["Valg 1: ASK for aksjedelen + høyrentekonto for rentedelen","Valg 2: Fondskonto med ett kombinasjonsfond (ca. 65% aksjer)","Velg det som passer deg best — et kombinasjonsfond er enklere, men ofte litt dyrere","Ikke selg ved markedsfall — hold fast og tenk langsiktig"],"80":["Opprett en ASK (aksjesparekonto) hos Nordnet, Kron eller din bank","Velg et kombinasjonsfond med 80% aksjer og lav forvaltningsavgift (under 0,5%)","Alternativt: et globalt aksjeindeksfond + rentefond for 20%-delen (mer kontroll, litt mer arbeid)","Sett opp automatisk månedlig sparing","Ikke selg ved markedsfall — hold fast og tenk langsiktig"],"100":["Opprett en ASK (aksjesparekonto) hos Nordnet, Kron eller din bank","Velg et bredt globalt aksjeindeksfond med lave kostnader","Sett opp automatisk månedlig sparing","Forvent store svingninger — det er normalt. Hold ut og tenk langsiktig"]},"products":{"0":"Høyrentekonto (0% aksjer)","20":"20% aksjer i ASK + 80% høyrentekonto","35":"35% aksjer i ASK + 65% høyrentekonto","50":"50% aksjer i ASK + 50% høyrentekonto eller rentefond","65":"65% aksjer i ASK + 35% høyrentekonto","80":"Kombinasjonsfond med 80% aksjer i ASK","100":"Globalt aksjeindeksfond i ASK"},"nextSteps":{"0":"Opprett en <strong>høyrentekonto</strong> hos Bulder Bank, Sbanken, Lunar eller din bank. Sett opp automatisk månedlig overføring og la renten jobbe for deg.","20":"Du har to gode alternativer:<br>• <strong>ASK</strong> med 20% i et globalt indeksfond + <strong>høyrentekonto</strong> for de resterende 80%.<br>• <strong>Fondskonto</strong> med ett kombinasjonsfond som har ca. 20% aksjer — enklere å administrere. Se etter lav forvaltningsavgift (helst under 0,5%).<br><br><em style=\"color:var(--ink-muted);font-size:0.85em;\">💡 ASK eller fondskonto kan som regel settes opp hos din nåværende bank. Alternativt hos banker som DNB eller Nordea, eventuelt Nordnet eller Kron.</em>","35":"Du har to gode alternativer:<br>• <strong>ASK</strong> med 35% i et globalt indeksfond + <strong>høyrentekonto</strong> for de resterende 65%.<br>• <strong>Fondskonto</strong> med ett kombinasjonsfond som har ca. 35% aksjer — enklere å administrere. Se etter lav forvaltningsavgift (helst under 0,5%).<br><br><strong>Husk:</strong> Ikke selg ved markedsfall — hold fast og tenk langsiktig. Svingninger er normalt og midlertidige.<br><br><em style=\"color:var(--ink-muted);font-size:0.85em;\">💡 ASK eller fondskonto kan som regel settes opp hos din nåværende bank. Alternativt hos banker som DNB eller Nordea, eventuelt Nordnet eller Kron.</em>","50":"Du har to gode alternativer:<br>• <strong>ASK</strong> med 50% i et globalt indeksfond + <strong>høyrentekonto eller rentefond</strong> for de resterende 50%.<br>• <strong>Fondskonto</strong> med ett kombinasjonsfond som har ca. 50% aksjer — enklere å administrere. Se etter lav forvaltningsavgift (helst under 0,5%).<br><br><strong>Husk:</strong> Ikke selg ved markedsfall — hold fast og tenk langsiktig. Svingninger er normalt og midlertidige.<br><br><em style=\"color:var(--ink-muted);font-size:0.85em;\">💡 ASK eller fondskonto kan som regel settes opp hos din nåværende bank. Alternativt hos banker som DNB eller Nordea, eventuelt Nordnet eller Kron.</em>","65":"Du har to gode alternativer:<br>• <strong>ASK</strong> med 65% i et globalt indeksfond + <strong>høyrentekonto</strong> for de resterende 35%.<br>• <strong>Fondskonto</strong> med ett kombinasjonsfond som har ca. 65% aksjer — enklere å administrere. Se etter lav forvaltningsavgift (helst under 0,5%).<br><br><strong>Husk:</strong> Ikke selg ved markedsfall — hold fast og tenk langsiktig. Svingninger er normalt og midlertidige.<br><br><em style=\"color:var(--ink-muted);font-size:0.85em;\">💡 ASK eller fondskonto kan som regel settes opp hos din nåværende bank. Alternativt hos banker som DNB eller Nordea, eventuelt Nordnet eller Kron.</em>","80":"Opprett en <strong>ASK (aksjesparekonto)</strong> og velg et kombinasjonsfond med 80% aksjer og lav forvaltningsavgift (under 0,5%). Alternativt et globalt aksjeindeksfond for aksjedelen og et rentefond for de resterende 20% — mer kontroll, litt mer arbeid.<br><br><strong>Husk:</strong> Ikke selg ved markedsfall — hold fast og tenk langsiktig. Svingninger er normalt og midlertidige.<br><br><em style=\"color:var(--ink-muted);font-size:0.85em;\">💡 ASK eller fondskonto kan som regel settes opp hos din nåværende bank. Alternativt hos banker som DNB eller Nordea, eventuelt Nordnet eller Kron.</em>","100":"Opprett en <strong>ASK (aksjesparekonto)</strong> og start sparing i et bredt globalt aksjeindeksfond med lave kostnader. Lave kostnader er viktigere enn valg av plattform — se etter fond med under 0,3% i forvaltningsavgift.<br><br><strong>Husk:</strong> Ikke selg ved markedsfall — hold fast og tenk langsiktig. Svingninger er normalt og midlertidige.<br><br><em style=\"color:var(--ink-muted);font-size:0.85em;\">💡 ASK eller fondskonto kan som regel settes opp hos din nåværende bank. Alternativt hos banker som DNB eller Nordea, eventuelt Nordnet eller Kron.</em>"},"flipNotes":{"0":"Hadde du investert i aksjer i stedet, ville pengene historisk vokst mer — men med svingninger du kanskje ikke er klar for akkurat nå.","20":"Med høyere aksjeandel ville du fått mer svingninger, men også høyere forventet avkastning over tid.","35":"En mer offensiv profil ville gitt mer svingninger men potensielt bedre langsiktig avkastning.","50":"Mer aksjer gir mer svingninger men historisk bedre langsiktig avkastning. Mindre aksjer gir mer stabilitet men lavere vekst.","65":"En mer aggressiv profil ville gitt mer svingninger. En mer defensiv gitt mer stabilitet — begge er gyldige valg.","80":"100% aksjer ville gitt maksimal vekst over tid, men også de største svingningene underveis.","100":"En mer forsiktig profil ville redusert svingningene, men historisk gitt lavere langsiktig avkastning."}};
 
 // Map allocation fraction → nearest engine equity key
 function allocToEngKey(frac){
@@ -836,18 +964,15 @@ function bufKey(m){if(m<1)return'L';if(m<3)return'M';return'H';}
 function riskChar(score){if(score<=1)return'C';if(score<=2)return'N';return'A';}
 
 function buildRecHTML(engKey, hKey, bKey, rChar, bufferNoteHTML, horizNote, pAllocPct){
-  const stepsArr = ENG.steps[engKey]||ENG.steps['50'];
-  const steps = stepsArr.map(s=>`<li>${s}</li>`).join('');
   const allocLine = pAllocPct!==undefined
     ? `${pAllocPct}% aksjer · ${ENG.products[engKey]}`
     : ENG.products[engKey];
-  const disclaimer = `<div class="fund-disclaimer">⚠️ <strong>Merk:</strong> Bankene og plattformene nevnt ovenfor er illustrative eksempler — ikke en anbefaling om å velge én fremfor en annen. Kombinasjonsfond er ofte aktivt forvaltet — se etter lav forvaltningsavgift (helst under 0,5%) og vurder passivt forvaltede alternativer der det finnes. Gjør egne undersøkelser eller kontakt din bank.</div>`;
+  const disclaimer = `<div class="fund-disclaimer">⚠️ <strong>Merk:</strong> Produktene og plattformene nevnt ovenfor er illustrative eksempler — ikke en anbefaling om å velge én fremfor en annen. Kombinasjonsfond er ofte aktivt forvaltet — se etter lav forvaltningsavgift (helst under 0,5%) og vurder passivt forvaltede alternativer. Gjør egne undersøkelser eller kontakt din bank.</div>`;
   return `<div class="rec-box">
 <div class="rec-title">💡 Min anbefaling</div>
 <div class="alloc-line">${allocLine}</div>
-<ul>${steps}</ul>
 <div class="next-step">📋 <strong>Slik kommer du i gang:</strong> ${ENG.nextSteps[engKey]}</div>
-<div class="flip-note">🔄 ${ENG.flipNotes[engKey]}</div>
+<div class="flip-note">📚 <button class="info-link" onclick="openInfoDrawer()">Mer informasjon om fondssparing her</button></div>
 </div>${bufferNoteHTML}${disclaimer}`;
 }
 
@@ -857,7 +982,8 @@ function buildRecHTML(engKey, hKey, bKey, rChar, bufferNoteHTML, horizNote, pAll
 let collectedState = {
   lumpSum: 0, monthly: 0, horizon: 15,
   bufferMonths: 3, hasDebt: false, mortgageRate: 0.03, debtLabel: 'lån',
-  riskComfort: 'N',  // C/N/A
+  riskWillingness: 'Offensiv',
+  riskComfort: 'N',  // C/S/N/A
   income: 0, expenses: 0,
   q1Score: 2  // behavioural Q1 score for rChar
 };
@@ -898,43 +1024,53 @@ const LANDING_QUESTIONS = [
       else collectedState.bufferMonths=4;
     }
   },
-  // Step 2: debt
+  // Step 2: debt (mortgage y/n only — tip shown inline with question)
   {
-    ask: '<span class="ai-question">Har du gjeld — for eksempel boliglån eller forbrukslån?</span>',
-    quick: ['Ja, boliglån','Ja, forbrukslån (høy rente)','Ja, studielån','Nei, ingen gjeld'],
+    ask: '<span class="ai-question">Har du boliglån?</span><div class="debt-tip">💡 <strong>Merk:</strong> Hvis du har forbrukslån, anbefaler vi at du betaler ned dette før du evt. investerer penger. Forbrukslån har ofte høy rente (10%+) og gir en sikker "avkastning" ved nedbetaling som overstiger det investering normalt kan gi.</div>',
+    quick: ['Ja, boliglån','Nei, ingen gjeld'],
     parse(txt){
       const t=txt.toLowerCase();
       collectedState.hasDebt=!(t.includes('ingen')||t.includes('nei'));
-      if(t.includes('forbruks')||t.includes('kredittkort')){collectedState.mortgageRate=0.12;collectedState.debtLabel='forbrukslån';}
-      else if(t.includes('studie')){collectedState.mortgageRate=0.035;collectedState.debtLabel='studielån';}
-      else if(t.includes('bolig')){collectedState.mortgageRate=0.04;collectedState.debtLabel='boliglån';}
+      if(collectedState.hasDebt){collectedState.mortgageRate=0.04;collectedState.debtLabel='boliglån';}
       else{collectedState.debtLabel='lån';}
     }
   },
-  // Step 3: horizon
+  // Step 3: horizon (5 options)
   {
     ask: '<span class="ai-question">Når ser du for deg å bruke pengene?</span><br>Jo lenger tidshorisont, jo mer risiko kan du tåle.',
-    quick: ['Under 3 år','3–7 år','7–15 år','Over 15 år'],
+    quick: ['Under 3 år','3–6 år','6–10 år','10–15 år','Over 15 år'],
     parse(txt){
       const t=txt.toLowerCase();
-      const m=t.match(/(\d+)/);const n=m?+m[1]:10;
-      if(t.includes('under 3')||n<=2)collectedState.horizon=2;
-      else if(t.includes('3')&&t.includes('7'))collectedState.horizon=7;
-      else if(t.includes('7')&&t.includes('15'))collectedState.horizon=15;
-      else if(t.includes('over 15')||n>15)collectedState.horizon=20;
-      else collectedState.horizon=Math.min(40,Math.max(1,n));
+      if(t.includes('under 3'))collectedState.horizon=2;
+      else if(t.includes('3')&&t.includes('6'))collectedState.horizon=6;
+      else if(t.includes('6')&&t.includes('10'))collectedState.horizon=10;
+      else if(t.includes('10')&&t.includes('15'))collectedState.horizon=15;
+      else if(t.includes('over 15'))collectedState.horizon=20;
+      else collectedState.horizon=10;
     }
   },
-  // Step 4: risk comfort
+  // Step 4: risk willingness (new)
+  {
+    ask: '<span class="ai-question">Hva er din risikovilje?</span><br>Dette handler om hvor mye svingninger du ønsker i bytte mot forventet avkastning.',
+    quick: ['Lav — jeg vil ha stabilt og trygt','Middels — litt svingninger er ok','Offensiv — jeg tåler tydelige svingninger','Høy — jeg vil ha maksimal vekst over tid'],
+    parse(txt){
+      const t=txt.toLowerCase();
+      if(t.includes('lav')||t.includes('stabilt'))collectedState.riskWillingness='Lav';
+      else if(t.includes('middels'))collectedState.riskWillingness='Middels';
+      else if(t.includes('høy')||t.includes('maksimal'))collectedState.riskWillingness='Høy';
+      else collectedState.riskWillingness='Offensiv';
+    }
+  },
+  // Step 5: risk behaviour (existing question — modifies willingness)
   {
     ask: '<span class="ai-question">Siste spørsmål: hvis investeringen din falt 20% på ett år — hva ville du gjøre?</span>',
     quick: ['Selge alt — for mye risiko','Selge noe for å redusere risiko','Holde på og vente','Kjøpe mer mens det er billig'],
     parse(txt){
       const t=txt.toLowerCase();
-      if(t.includes('selge alt')||t.includes('for mye')){collectedState.riskComfort='C';collectedState.q1Score=1;}
-      else if(t.includes('selge noe')||t.includes('redusere')){collectedState.riskComfort='S';collectedState.q1Score=2;}
-      else if(t.includes('kjøpe mer')||t.includes('billig')){collectedState.riskComfort='A';collectedState.q1Score=4;}
-      else{collectedState.riskComfort='N';collectedState.q1Score=3;}
+      if(t.includes('selge alt')||t.includes('for mye')){collectedState.riskComfort='C';}
+      else if(t.includes('selge noe')||t.includes('redusere')){collectedState.riskComfort='S';}
+      else if(t.includes('kjøpe mer')||t.includes('billig')){collectedState.riskComfort='A';}
+      else{collectedState.riskComfort='N';}
     }
   }
 ];
@@ -974,20 +1110,20 @@ function landingSend(){
   const q=LANDING_QUESTIONS[landingStep];
   if(q&&q.parse) q.parse(text);
 
-  // Special: if they said they have debt but didn't mention rate, ask for rate once
-  if(landingStep===2&&collectedState.hasDebt&&collectedState.mortgageRate===0.04&&!askedDebtRate){
+  // Debt follow-up: if mortgage, ask for rate once
+  if(landingStep===2&&collectedState.hasDebt&&!askedDebtRate){
     askedDebtRate=true;
     setTimeout(()=>{
-      landingAddBubble('<span class="ai-question">Omtrent hvilken rente betaler du på lånet?</span>',`ai`);
-      setLandingQuick(['Ca. 2%','Ca. 3%','Ca. 4%','Ca. 5%','Over 6%']);
+      landingAddBubble('<span class="ai-question">Omtrent hvilken rente betaler du på boliglånet?</span>','ai');
+      setLandingQuick(['Ca. 3%','Ca. 4%','Ca. 5%','Ca. 6%','Over 6%']);
       landingLocked=false;
     },400);
     return;
   }
   // If this was the rate follow-up answer, parse it
   if(landingStep===2&&askedDebtRate&&collectedState.hasDebt){
-    const t=text.toLowerCase();
-    const m=t.match(/(\d[\d,.]*)/);if(m){const r=parseFloat(m[1].replace(',','.'));if(r>0&&r<50)collectedState.mortgageRate=r/100;}
+    const tl=text.toLowerCase();
+    const m=tl.match(/(\d[\d,.]*)/);if(m){const r=parseFloat(m[1].replace(',','.'));if(r>0&&r<50)collectedState.mortgageRate=r/100;}
   }
 
   landingStep++;
@@ -1004,13 +1140,14 @@ function landingSend(){
 }
 
 function deliverLandingRec(){
-  // Compute equity allocation
+  // Compute equity allocation from (riskWillingness, behaviour) combo
   const cap=capacityFromInputs(collectedState.income||500000,collectedState.expenses||300000,collectedState.bufferMonths);
-  // Map risk comfort to riskLabel
-  const riskMap={'C':'Lav','N':'Høy','A':'Høy','S':'Offensiv'};
-  const riskLabel=riskMap[collectedState.riskComfort]||'Middels';
-  const ar=applyCapacity(riskLabel,cap);
-  const alloc=ALLOC_TABLE[hBucket(collectedState.horizon)][RISK_SCORE[ar]??3];
+  // Behaviour penalty: C (sell all) = -2, S (sell some) = -1, N/A (hold or buy) = 0
+  const behaviourPenalty = collectedState.riskComfort==='C' ? 2 : collectedState.riskComfort==='S' ? 1 : 0;
+  const baseCol = RISK_SCORE[collectedState.riskWillingness] ?? 4;
+  const finalCol = Math.max(0, Math.min(cap.cappedLevel, baseCol - behaviourPenalty));
+  const ar = RISK_LABELS[finalCol];
+  const alloc=ALLOC_TABLE[hBucket(collectedState.horizon)][finalCol];
   const pAlloc=alloc==='Bank'?0:(typeof alloc==='number'?alloc:0);
 
   const engKey=allocToEngKey(pAlloc);
@@ -1021,7 +1158,7 @@ function deliverLandingRec(){
   const title=ENG.titles[engKey]?.[collectedState.riskComfort]||ENG.titles[engKey]?.N||'';
   const horizNote=ENG.horizonNotes[hKey]||'';
 
-  // Debt comparison text
+  // Debt comparison text (only for high-interest debt)
   let debtNote='';
   if(collectedState.hasDebt&&collectedState.mortgageRate>0.05){
     debtNote=`<br><strong>Merk om gjeld:</strong> Med en rente på ${(collectedState.mortgageRate*100).toFixed(0)}% er det sannsynlig at nedbetaling av gjeld gir bedre netto avkastning enn investering. Vurder å prioritere gjelden.`;
@@ -1031,14 +1168,15 @@ function deliverLandingRec(){
   const recHTML=`${title} ${horizNote}${debtNote}<br><br>${buildRecHTML(engKey,hKey,bKey,collectedState.riskComfort,bufNote,'',Math.round(pAlloc*100))}`;
   landingAddBubble(recHTML,'ai');
 
-  // Render chart
+  // Render chart with allocation-adjusted expected return
   renderLandingChart({
     lumpSum:collectedState.lumpSum,
     monthly:collectedState.monthly,
     years:collectedState.horizon,
     mortgageRate:collectedState.mortgageRate,
     debtLabel:collectedState.debtLabel||'lån',
-    includeInvest:pAlloc>0,
+    stockFraction:pAlloc,
+    includeInvest:pAlloc>0||collectedState.lumpSum>0||collectedState.monthly>0,
     includeMortgage:collectedState.hasDebt
   });
 
@@ -1063,109 +1201,69 @@ function triggerDeeper(){
 setTimeout(()=>initLanding(),200);
 
 // ══════════════════════════════════════
-// ADVISORY CHAT — FIXED QUESTION FLOW
+// ADVISORY CHAT — ALIGNED WITH LANDING PAGE
 // ══════════════════════════════════════
-// 9 steps total: suitability → 4 MC risk questions → horizon → income/expenses → buffer → capital
+// Flow: suitability → amount → buffer → debt → horizon → risk willingness → risk behaviour
 let advStep=0;
 let advLocked=false;
-let advMCScores=[];  // accumulate 4 MC question scores
+let advAskedDebtRate=false;
 
 const ADV_QUESTIONS=[
   // Step 0: suitability
   {
-    ask:'Hei! Jeg er her for å hjelpe deg med en grundigere analyse. 📊<br><br><span class="ai-question">Har du erfaring med fond eller verdipapirer, eller relevant utdanning innen finans eller økonomi?</span>',
-    quick:['Ja, erfaring med fond','Ja, finans-/økonomiutdanning','Nei, nybegynner'],
-    parse(txt){/* suitability noted but flow continues regardless */}
-  },
-  // Steps 1–4: MC risk battery (4 questions)
-  {
-    ask:'For å finne din risikovilje stiller jeg deg fire raske spørsmål.<br><br><span class="ai-question">Spørsmål 1: Hvis porteføljen din falt 20% på tre måneder — hva ville du gjøre?</span>',
-    quick:['Selge alt umiddelbart','Selge noe for å redusere risiko','Beholde og vente på bedring','Kjøpe mer mens prisene er lave'],
+    ask:'Hei! 📊 Jeg tar deg gjennom en grundig analyse.<br><br><span class="ai-question">Har du erfaring med fond eller verdipapirer, eller relevant utdanning innen finans eller økonomi?</span>',
+    quick:['Ja, erfaring med fond/verdipapirer','Ja, finans-/økonomiutdanning','Nei, nybegynner'],
     parse(txt){
       const t=txt.toLowerCase();
-      let s=2;
-      if(t.includes('selge alt'))s=1;
-      else if(t.includes('selge noe'))s=2;
-      else if(t.includes('beholde')||t.includes('vente'))s=3;
-      else if(t.includes('kjøpe mer'))s=4;
-      advMCScores[0]=s;
+      collectedState.suitability = (t.includes('erfaring')||t.includes('utdanning')) ? 'expert' : 'beginner';
     }
   },
+  // Step 1: amount (same as landing)
   {
-    ask:'<span class="ai-question">Spørsmål 2: Hva er ditt primære mål med investeringen?</span>',
-    quick:['Bevare verdiene','Moderat vekst, begrenset risiko','God vekst, tåler svingninger','Maksimal langsiktig avkastning'],
-    parse(txt){
-      const t=txt.toLowerCase();
-      let s=2;
-      if(t.includes('bevare'))s=1;
-      else if(t.includes('moderat'))s=2;
-      else if(t.includes('god vekst'))s=3;
-      else if(t.includes('maksimal'))s=4;
-      advMCScores[1]=s;
-    }
+    ask:'<span class="ai-question">Hvor mye penger snakker vi om — er det et engangsbeløp, månedlig sparing, eller begge deler?</span>',
+    quick:['5 000 kr/mnd','10 000 kr/mnd','50 000 kr engangsbeløp','200 000 kr engangsbeløp','500 000 kr engangsbeløp'],
+    parse(txt){LANDING_QUESTIONS[0].parse(txt);}
   },
+  // Step 2: buffer
   {
-    ask:'<span class="ai-question">Spørsmål 3: Hvor lenge planlegger du å la pengene stå?</span>',
-    quick:['Under 3 år','3–7 år','7–15 år','Over 15 år'],
-    parse(txt){
-      const t=txt.toLowerCase();
-      let s=2;
-      if(t.includes('under 3')||t.includes('1')||t.includes('2'))s=1;
-      else if(t.includes('3')||t.includes('7'))s=2;
-      else if(t.includes('15'))s=3;
-      else if(t.includes('over')||t.includes('20')||t.includes('30'))s=4;
-      advMCScores[2]=s;
-      // Also set horizon from this answer
-      LANDING_QUESTIONS[3].parse(txt);
-    }
+    ask:'<span class="ai-question">Har du en buffer — altså penger du lett kan bruke hvis noe uventet skjer?</span><br>Tommelfingerregelen er 2–3 måneder med utgifter.',
+    quick:['Ja, godt over 3 måneder','Ca. 1–2 måneder','Nei, ingen buffer'],
+    parse(txt){LANDING_QUESTIONS[1].parse(txt);}
   },
+  // Step 3: debt (mortgage y/n + inline tip)
   {
-    ask:'<span class="ai-question">Spørsmål 4: Hvilken setning passer deg best?</span>',
-    quick:['Jeg sover dårlig hvis investeringene svinger','Jeg tåler litt uro, men bekymrer meg ved store fall','Komfortabel med svingninger på vei mot målet','Svingninger plager meg ikke — jeg tenker langsiktig'],
-    parse(txt){
-      const t=txt.toLowerCase();
-      let s=2;
-      if(t.includes('sover dårlig'))s=1;
-      else if(t.includes('litt uro')||t.includes('bekymrer'))s=2;
-      else if(t.includes('komfortabel'))s=3;
-      else if(t.includes('plager meg ikke')||t.includes('langsiktig'))s=4;
-      advMCScores[3]=s;
-      // Compute riskComfort from total MC score
-      // Score range: 4 (all 1s) to 16 (all 4s)
-      // 4     = C (selge alt in every answer — two steps down)
-      // 5-6   = S (selge noe tendency — one step down)
-      // 7-11  = N (hold steady — full allocation, rational long-term)
-      // 12-16 = A (buy more — full allocation)
-      const total=(advMCScores[0]||2)+(advMCScores[1]||2)+(advMCScores[2]||2)+s;
-      if(total<=4)collectedState.riskComfort='C';
-      else if(total<=6)collectedState.riskComfort='S';
-      else if(total<=11)collectedState.riskComfort='N';
-      else collectedState.riskComfort='A';
-    }
+    ask:'<span class="ai-question">Har du boliglån?</span><div class="debt-tip">💡 <strong>Merk:</strong> Hvis du har forbrukslån, anbefaler vi at du betaler ned dette før du evt. investerer penger. Forbrukslån har ofte høy rente (10%+) og gir en sikker "avkastning" ved nedbetaling som overstiger det investering normalt kan gi.</div>',
+    quick:['Ja, boliglån','Nei, ingen gjeld'],
+    parse(txt){LANDING_QUESTIONS[2].parse(txt);}
   },
-  // Step 5: income/expenses
+  // Step 4: financial situation (income + expenses)
   {
-    ask:'<span class="ai-question">Hva er din årslønn etter skatt, og hva er de omtrentlige årlige utgiftene dine?</span><br>Dette brukes til å beregne din evne til å tåle svingninger.',
+    ask:'<span class="ai-question">Hva er din årslønn etter skatt, og hva er de omtrentlige årlige utgiftene dine?</span><br>Dette brukes til å beregne din finansielle bæreevne.',
     quick:['Lønn 400 000, utgifter 250 000','Lønn 600 000, utgifter 350 000','Lønn 800 000, utgifter 450 000','Over 1 000 000 i lønn'],
     parse(txt){
-      // Handle both "400k" and "400 000" formats
-      const normalised = txt.replace(/(\d+)\s*k\b/gi, (m,n)=>String(+n*1000));
+      const normalised=txt.replace(/(\d+)\s*k\b/gi,(m,n)=>String(+n*1000));
       const nums=(normalised.match(/\d[\d\s]*/g)||[]).map(n=>+n.replace(/\s/g,'')).filter(n=>n>1000).sort((a,b)=>b-a);
       if(nums.length>=2){collectedState.income=nums[0];collectedState.expenses=nums[1];}
       else if(nums.length===1)collectedState.income=nums[0];
     }
   },
-  // Step 6: buffer
+  // Step 5: horizon (5 options matching landing)
   {
-    ask:'<span class="ai-question">Hvor mange måneder utgifter har du som buffer — lett tilgjengelig om noe uventet skjer?</span>',
-    quick:['Under 1 måned','1–2 måneder','3–6 måneder','Over 6 måneder'],
-    parse(txt){LANDING_QUESTIONS[1].parse(txt);}
+    ask:'<span class="ai-question">Når ser du for deg å bruke pengene?</span><br>Jo lenger tidshorisont, jo mer risiko kan du tåle.',
+    quick:['Under 3 år','3–6 år','6–10 år','10–15 år','Over 15 år'],
+    parse(txt){LANDING_QUESTIONS[3].parse(txt);}
   },
-  // Step 7: capital / savings
+  // Step 6: risk willingness (same as landing)
   {
-    ask:'<span class="ai-question">Hva er startkapitalen og/eller månedlig sparing du planlegger?</span>',
-    quick:['Ingen startkapital','100 000 kr','500 000 kr','5 000 kr/mnd','10 000 kr/mnd'],
-    parse(txt){LANDING_QUESTIONS[0].parse(txt);}
+    ask:'<span class="ai-question">Hva er din risikovilje?</span><br>Dette handler om hvor mye svingninger du ønsker i bytte mot forventet avkastning.',
+    quick:['Lav — jeg vil ha stabilt og trygt','Middels — litt svingninger er ok','Offensiv — jeg tåler tydelige svingninger','Høy — jeg vil ha maksimal vekst over tid'],
+    parse(txt){LANDING_QUESTIONS[4].parse(txt);}
+  },
+  // Step 7: risk behaviour (same as landing)
+  {
+    ask:'<span class="ai-question">Siste spørsmål: hvis investeringen din falt 20% på ett år — hva ville du gjøre?</span>',
+    quick:['Selge alt — for mye risiko','Selge noe for å redusere risiko','Holde på og vente','Kjøpe mer mens det er billig'],
+    parse(txt){LANDING_QUESTIONS[5].parse(txt);}
   }
 ];
 
@@ -1189,7 +1287,7 @@ function setAdvQuick(opts){
 }
 
 function initAdvChat(){
-  advStep=0;advMCScores=[];
+  advStep=0;advAskedDebtRate=false;
   document.getElementById('advChatHistory').innerHTML='';
   document.getElementById('advQuickRow').innerHTML='';
   setTimeout(()=>{
@@ -1206,21 +1304,47 @@ function advSend(){
   advAddBubble(text,'user');
   advLocked=true;
 
+  // Special handling: if we're waiting for a rate answer after a boliglån answer
+  if(advAskedDebtRate && collectedState.hasDebt && advStep===3){
+    const tl=text.toLowerCase();
+    const m=tl.match(/(\d[\d,.]*)/);if(m){const r=parseFloat(m[1].replace(',','.'));if(r>0&&r<50)collectedState.mortgageRate=r/100;}
+    advAskedDebtRate=false; // reset so we don't loop
+    advStep=4; // move past debt to horizon
+    setTimeout(()=>{
+      advAddBubble(ADV_QUESTIONS[advStep].ask,'ai');
+      setAdvQuick(ADV_QUESTIONS[advStep].quick);
+      advLocked=false;
+    },400);
+    return;
+  }
+
   const q=ADV_QUESTIONS[advStep];
   if(q&&q.parse) q.parse(text);
   advStep++;
 
   setTimeout(()=>{
-    // After step 4 (last MC question), show a brief acknowledgment before financial questions
-    if(advStep===5){
-      const riskLabel={'C':'forsiktig — du foretrekker å selge alt ved fall','S':'noe forsiktig — du ville solgt noe ved store fall','N':'langsiktig — du holder fast ved markedsfall','A':'offensiv — du ville kjøpt mer ved fall'}[collectedState.riskComfort]||'balansert';
-      advAddBubble(`Takk — du har en <strong>${riskLabel}</strong> profil. Nå tar jeg deg gjennom noen raske spørsmål om din finansielle situasjon.`,'ai');
+    // After step 0 (suitability): show beginner info box if user is a nybegynner
+    if(advStep===1 && collectedState.suitability==='beginner'){
+      advAddBubble(`<div class="info-box-inline"><strong style="color:var(--teal);">📚 Godt å vite før du starter:</strong><ul><li><strong>Verdipapirer</strong> er aksjer og obligasjoner. En aksje kan gi høy avkastning — men også store tap. En obligasjon er tryggere, men gir lavere avkastning.</li><li><strong>Risiko</strong> betyr svingninger. Lang tidshorisont reduserer risikoen betraktelig.</li><li><strong>Kostnader</strong> trekkes automatisk fra avkastningen. 0,5% kan over 20 år utgjøre hundretusener i tapt verdi.</li></ul></div>`,'ai');
       setTimeout(()=>{
         advAddBubble(ADV_QUESTIONS[advStep].ask,'ai');
         setAdvQuick(ADV_QUESTIONS[advStep].quick);
         advLocked=false;
-      },600);
-    } else if(advStep<ADV_QUESTIONS.length){
+      },900);
+      return;
+    }
+
+    // After step 3 (debt): if mortgage, ask for rate before moving on to step 4 (income)
+    if(advStep===4 && collectedState.hasDebt && !advAskedDebtRate){
+      advAskedDebtRate=true;
+      advStep=3; // stay at 3 for rate answer handling
+      advAddBubble('<span class="ai-question">Omtrent hvilken rente betaler du på boliglånet?</span>','ai');
+      setAdvQuick(['Ca. 3%','Ca. 4%','Ca. 5%','Ca. 6%','Over 6%']);
+      advLocked=false;
+      return;
+    }
+
+    if(advStep<ADV_QUESTIONS.length){
       advAddBubble(ADV_QUESTIONS[advStep].ask,'ai');
       setAdvQuick(ADV_QUESTIONS[advStep].quick);
       advLocked=false;
@@ -1235,19 +1359,25 @@ function deliverAdvRec(){
   const inc=collectedState.income||600000;
   const exp=collectedState.expenses||350000;
   const cap=capacityFromInputs(inc,exp,collectedState.bufferMonths);
-  const riskMap={'C':'Lav','N':'Høy','A':'Høy','S':'Offensiv'};
-  const riskLabel=riskMap[collectedState.riskComfort]||'Middels';
-  const ar=applyCapacity(riskLabel,cap);
-  const alloc=ALLOC_TABLE[hBucket(collectedState.horizon)][RISK_SCORE[ar]??3];
+  // Same logic as deliverLandingRec — (riskWillingness, behaviour) combo
+  const behaviourPenalty = collectedState.riskComfort==='C' ? 2 : collectedState.riskComfort==='S' ? 1 : 0;
+  const baseCol = RISK_SCORE[collectedState.riskWillingness] ?? 4;
+  const finalCol = Math.max(0, Math.min(cap.cappedLevel, baseCol - behaviourPenalty));
+  const ar = RISK_LABELS[finalCol];
+  const alloc=ALLOC_TABLE[hBucket(collectedState.horizon)][finalCol];
   const pAlloc=alloc==='Bank'?0:(typeof alloc==='number'?alloc:0);
   const engKey=allocToEngKey(pAlloc);
   const hKey=hKeyFromYears(collectedState.horizon);
   const bKey=bufKey(collectedState.bufferMonths);
   const title=ENG.titles[engKey]?.[collectedState.riskComfort]||ENG.titles[engKey]?.N||'';
   const horizNote=ENG.horizonNotes[hKey]||'';
+  let debtNote='';
+  if(collectedState.hasDebt&&collectedState.mortgageRate>0.05){
+    debtNote=`<br><strong>Merk om gjeld:</strong> Med en rente på ${(collectedState.mortgageRate*100).toFixed(0)}% er det sannsynlig at nedbetaling av gjeld gir bedre netto avkastning enn investering. Vurder å prioritere gjelden.`;
+  }
   const bufNote = bufferAdvisoryNote(cap.bufferFlag, collectedState.monthly);
-  advAddBubble(`${title} ${horizNote}<br><br>${buildRecHTML(engKey,hKey,bKey,collectedState.riskComfort,bufNote,'',Math.round(pAlloc*100))}`, 'ai');
-  // Trigger chart render
+  advAddBubble(`${title} ${horizNote}${debtNote}<br><br>${buildRecHTML(engKey,hKey,bKey,collectedState.riskComfort,bufNote,'',Math.round(pAlloc*100))}`, 'ai');
+  // Trigger MC chart render in the results panel
   renderResults({
     startCapital:collectedState.lumpSum||0,
     monthly:collectedState.monthly||0,
@@ -1260,5 +1390,49 @@ function deliverAdvRec(){
 }
 
 </script>
+<!-- FLOATING INFO BUTTON -->
+<button class="info-fab" onclick="openInfoDrawer()" aria-label="Åpne info om fondssparing">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+  Info om fondssparing
+</button>
+
+<!-- ══════════════════════════════════════
+     INFO DRAWER — fund basics FAQ
+══════════════════════════════════════ -->
+<div class="info-drawer-backdrop" id="infoDrawerBackdrop" onclick="closeInfoDrawer()"></div>
+<div class="info-drawer" id="infoDrawer">
+  <div class="info-drawer-header">
+    <h3>📚 Om fondssparing — det du trenger å vite</h3>
+    <button class="info-drawer-close" onclick="closeInfoDrawer()" aria-label="Lukk">✕</button>
+  </div>
+  <div class="info-drawer-body">
+    <h4>Hva er aksjer?</h4>
+    <p>En aksje er en eierandel i et selskap. Når du eier aksjer i et selskap, eier du en liten del av virksomheten og har rett til en andel av overskuddet (utbytte) og eventuelle verdistigninger. Aksjekursene svinger — noen dager opp, noen dager ned — men over lang tid har aksjer historisk gitt høyere avkastning enn alle andre aktivaklasser.</p>
+
+    <h4>Hva er et aksjefond?</h4>
+    <p>Et aksjefond er en samling av mange aksjer samlet i ett produkt. Når du kjøper en andel i et aksjefond, får du eksponering mot alle aksjene i fondet — ofte hundrevis eller tusenvis av selskaper på tvers av bransjer og land. Dette sprer risikoen: om ett selskap går dårlig, påvirker det deg mindre.</p>
+    <div class="info-tip"><strong>💡 Tips:</strong> Et globalt indeksfond følger et stort internasjonalt aksjeindeks (som MSCI World) og gir deg eksponering mot 1500+ selskaper over hele verden med lav kostnad.</div>
+
+    <h4>Indeksfond vs. aktivt forvaltede fond</h4>
+    <p>Et <strong>indeksfond</strong> forsøker ikke å slå markedet — det følger et bredt aksjeindeks (som MSCI World eller OSEBX) og eier de samme aksjene i samme forhold som indeksen. Det kreves lite arbeid fra forvalter, og kostnadene er derfor lave — typisk 0,10–0,30% i årlig forvaltningsavgift.</p>
+    <p>Et <strong>aktivt forvaltet fond</strong> har en forvalter som velger ut aksjer med mål om å gi bedre avkastning enn markedet. Dette krever analyse, forskning og aktiv handel, og kostnadene er derfor høyere — typisk 1,0–2,0% i årlig forvaltningsavgift.</p>
+    <p>Forskjellen i kostnad høres liten ut, men over tid blir den betydelig. Forskning viser at de fleste aktivt forvaltede fond ikke klarer å slå indeksen over lengre perioder, særlig etter at kostnadene er trukket fra. Det er hovedgrunnen til at indeksfond har blitt stadig mer populære blant både private sparere og profesjonelle investorer.</p>
+    <div class="info-tip"><strong>💡 Over 30 år:</strong> 1% høyere årlig kostnad kan redusere sluttverdien med 25–30%. Kostnader betaler du uansett om fondet gjør det bra eller dårlig.</div>
+
+    <h4>Hva er et rentefond?</h4>
+    <p>Et rentefond investerer i obligasjoner — altså lån til stater eller selskaper — og gir deg en fast eller variabel rente. Rentefond svinger mindre enn aksjefond og gir lavere forventet avkastning, men fungerer som en stabiliserende kraft i porteføljen. De egner seg når du ikke kan binde opp pengene i aksjer, men fortsatt ønsker noe mer avkastning enn en høyrentekonto.</p>
+
+    <h4>Hva er et kombinasjonsfond?</h4>
+    <p>Et kombinasjonsfond blander aksjer og obligasjoner i ett og samme fond — typisk 80% aksjer og 20% obligasjoner, eller 50/50. Fordelen er enkelhet: ett fond gir deg hele porteføljen, og du trenger ikke balansere to eller flere ulike fond selv. Ulempen er at mange kombinasjonsfond er aktivt forvaltet og har høyere kostnader enn rene indeksfond.</p>
+    <div class="info-tip"><strong>💡 Se etter:</strong> Forvaltningsavgift under 0,5% og helst et passivt forvaltet kombinasjonsfond. Aktiv forvaltning koster mer og gir historisk ikke bedre resultater.</div>
+
+    <h4>Om risiko og langsiktig sparing</h4>
+    <p>Mer aksjer gir mer svingninger, men historisk bedre langsiktig avkastning. Mindre aksjer gir mer stabilitet, men lavere vekst. Den viktigste variabelen er tidshorisont — over 10+ år har globale aksjeindeksfond historisk alltid gitt positiv avkastning, også etter finanskriser. Med kort horisont (under 3 år) er aksjer mer risikofylt fordi du kan være nødt til å selge når markedet er lavt.</p>
+
+    <h4>Om ASK og fondskonto</h4>
+    <p>En <strong>aksjesparekonto (ASK)</strong> er en konto hos en norsk bank eller plattform der du kan kjøpe aksjer og aksjefond uten å skatte på gevinsten før du tar pengene ut. Du kan også bytte mellom fond inne i ASK uten å utløse skatt. ASK passer for kombinasjonsfond med minst 80% aksjer, og for rene aksjefond. Obligasjonsfond passer ikke i ASK og må holdes på en vanlig <strong>fondskonto</strong>.</p>
+  </div>
+</div>
+
 </body>
 </html>
