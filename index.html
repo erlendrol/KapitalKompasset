@@ -1314,16 +1314,42 @@ function interpretInput(text,step){
 
   // ── HORIZON (landing step 3, adv step 5) ──
   if(step===3){
+    const ALL_HORIZON_QUICK=['Under 3 år','3–6 år','6–10 år','10–15 år','Over 15 år'];
+
+    // UNKNOWN_HORIZON
+    if(/vet ikke|usikker|aner ikke|ingen anelse|vanskelig å si|ikke sikker|^hmm?$|^\?+$|vet ikke helt/.test(t))
+      return{type:'clarify',message:'Det er helt vanlig å ikke vite dette nøyaktig — et grovt anslag er mer enn godt nok 😊 Tenk på det sånn: er dette penger du kan se for deg å la stå i mer enn 10 år, eller er det mer sannsynlig at du trenger dem i løpet av de neste 5–6 årene?',quick:ALL_HORIZON_QUICK};
+
+    // LIFE_EVENT
+    if(/til barna er store|til vi kjøper hus|til bryllupet|til vi skal reise|til jeg pensjonerer meg/.test(t))
+      return{type:'clarify',message:'Det høres fint ut 😊 Vet du omtrent hvor mange år det er til da? Et grovt anslag holder helt fint.',quick:ALL_HORIZON_QUICK};
+
+    // APPROXIMATE_NUMBER — strip hedging words, pass cleaned text to understood so parse() handles it
+    const approxMatch=t.match(/(?:ca\.?|omtrent|rundt|cirka|noe sånt som)\s+(\d+)/i);
+    if(approxMatch){
+      // Rewrite collectedState via the existing landing parser using the bare number string
+      LANDING_QUESTIONS[3].parse(approxMatch[1]+' år');
+      return{type:'understood',silent:true};
+    }
+
+    // VAGUE_LONG
     if(/\blenge\b|lang tid|mange år|til jeg er gammel|pensjon|alltid$/.test(t))
       return{type:'clarify',message:'Høres bra ut 😊 Tenker du mer enn 15 år, eller er du nærmere 10–15 år?',quick:['10–15 år','Over 15 år']};
+
+    // VAGUE_SHORT
     if(/\bsnart\b|ikke lenge|få år|kort tid/.test(t))
       return{type:'clarify',message:'Forstår — tenker du under 3 år, eller kanskje 3–6 år?',quick:['Under 3 år','3–6 år']};
+
+    // RANGE_INPUT
     const rng=t.match(/(\d+)\s*[-–]\s*(\d+)/)||t.match(/mellom\s+(\d+)\s+og\s+(\d+)/i);
     if(rng){const mid=Math.round((+rng[1]+ +rng[2])/2);return{type:'fallback',message:`Bruker midtpunktet — ca. ${mid} år 👍`,field:'horizon',value:mid};}
+
+    // AGE_BASED
     const ages=t.match(/(?:er|fyller)\s+(\d+).*?(?:pensjon\S*\s+(?:meg\s+)?(?:ved\s+)?|ved\s+)(\d+)/i);
     if(ages){const yrs=+ages[2]-+ages[1];if(yrs>0&&yrs<60)return{type:'fallback',message:`Bruker omtrent ${yrs} år til pensjon 👍`,field:'horizon',value:yrs};}
     if(/jeg er \d+|er \d+ år/.test(t)&&!rng)
-      return{type:'clarify',message:'Omtrent hvor mange år til du trenger pengene?'};
+      return{type:'clarify',message:'Omtrent hvor mange år til du trenger pengene?',quick:ALL_HORIZON_QUICK};
+
     return{type:'understood',silent:true};
   }
 
