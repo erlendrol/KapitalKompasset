@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KapitalKompasset</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -63,6 +65,9 @@ header{background:var(--ink);color:white;padding:0 2rem;height:56px;display:flex
 .bubble.ai .next-step strong{color:var(--ink);}
 .bubble.ai .deeper-btn{display:inline-block;margin-top:10px;background:var(--ink);color:white;border:none;padding:8px 18px;border-radius:50px;font-family:'DM Sans',sans-serif;font-size:0.82rem;cursor:pointer;font-weight:500;transition:background 0.15s;}
 .bubble.ai .deeper-btn:hover{background:var(--teal);}
+.bubble.ai .pdf-btn{display:inline-block;margin-top:10px;margin-left:8px;background:white;color:var(--teal);border:1.5px solid var(--teal);padding:8px 18px;border-radius:50px;font-family:'DM Sans',sans-serif;font-size:0.82rem;cursor:pointer;font-weight:500;transition:all 0.15s;}
+.bubble.ai .pdf-btn:hover{background:var(--teal-light);}
+.bubble.ai .pdf-btn:disabled{opacity:0.6;cursor:default;}
 
 .quick-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding:0.25rem 0;}
 .qbtn{background:white;border:1.5px solid var(--cream-dark);border-radius:50px;padding:8px 18px;font-size:0.85rem;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--ink-soft);font-weight:500;transition:all 0.15s;box-shadow:var(--shadow);}
@@ -1183,7 +1188,7 @@ function deliverLandingRec(){
   // Show deeper analysis button
   setTimeout(()=>{
     const d=document.createElement('div');d.className='bubble ai';
-    d.innerHTML=`Vil du se en fullstendig analyse med din eksakte porteføljeprofil og graf over tid?<br><br><button class="deeper-btn" onclick="triggerDeeper()">Se full analyse i KapitalKompasset →</button>`;
+    d.innerHTML=`Vil du se en fullstendig analyse med din eksakte porteføljeprofil og graf over tid?<br><br><button class="deeper-btn" onclick="triggerDeeper()">Se full analyse i KapitalKompasset →</button><button class="pdf-btn" onclick="downloadLandingPDF(this)">📄 Last ned anbefaling (PDF)</button>`;
     document.getElementById('landingMsgs').appendChild(d);
     document.querySelector('#screenLanding .landing-chat').scrollTop=99999;
     setLandingQuick(['Ja, vis meg full analyse','Nei, dette er nok']);
@@ -1195,6 +1200,91 @@ function triggerDeeper(){
   // If mode not chosen yet, auto-choose AI
   if(!advMode) chooseMode('ai');
   else if(advMode==='manual') prefillManualFromState();
+}
+
+async function downloadLandingPDF(btn){
+  btn.disabled=true;
+  btn.textContent='⏳ Genererer…';
+
+  const date=new Date().toLocaleDateString('nb-NO',{year:'numeric',month:'long',day:'numeric'});
+
+  // Capture chart as image before building the print container
+  const chartCanvas=document.getElementById('landingChart');
+  const chartImgSrc=chartCanvas?chartCanvas.toDataURL('image/png'):null;
+  const chartNoteEl=document.querySelector('.landing-chart-card .chart-note');
+
+  // Grab content from the chat
+  const msgs=document.getElementById('landingMsgs');
+  const recBox=msgs?msgs.querySelector('.rec-box'):null;
+  const bufNote=msgs?msgs.querySelector('.buffer-note'):null;
+  const disclaimer=msgs?msgs.querySelector('.fund-disclaimer'):null;
+
+  // Build an off-screen container with fully inlined styles (no CSS vars)
+  const wrap=document.createElement('div');
+  wrap.style.cssText='position:fixed;left:-9999px;top:0;width:700px;background:#ffffff;padding:40px;font-family:DM Sans,sans-serif;font-size:14px;color:#1a1a2e;box-sizing:border-box;line-height:1.6;';
+
+  let html=`
+    <div style="border-bottom:2px solid #2a7f7f;padding-bottom:14px;margin-bottom:22px;display:flex;justify-content:space-between;align-items:flex-end;">
+      <div>
+        <div style="font-size:20px;font-weight:700;color:#1a1a2e;letter-spacing:-0.3px;">KapitalKompasset</div>
+        <div style="font-size:13px;color:#7a7a9a;margin-top:3px;">Din spareanbefaling</div>
+      </div>
+      <div style="font-size:12px;color:#7a7a9a;">${date}</div>
+    </div>`;
+
+  if(recBox){
+    // Strip interactive buttons from clone
+    const clone=recBox.cloneNode(true);
+    clone.querySelectorAll('button').forEach(b=>b.remove());
+    html+=`<div style="background:#d4eeee;border:1px solid #a0d0d0;border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+      <div style="font-weight:600;color:#2a7f7f;font-size:14px;margin-bottom:6px;">💡 Min anbefaling</div>
+      <div style="font-size:13px;color:#3d3d5c;margin:4px 0;">${clone.querySelector('.alloc-line')?clone.querySelector('.alloc-line').innerHTML:''}</div>
+      <div style="font-size:12px;color:#3d3d5c;background:#f8f6f1;border-radius:7px;padding:8px 10px;margin-top:8px;line-height:1.5;">${clone.querySelector('.next-step')?clone.querySelector('.next-step').innerHTML:''}</div>
+    </div>`;
+  }
+
+  if(bufNote){
+    html+=`<div style="background:#e8f5e9;border:1.5px solid #81c784;border-radius:8px;padding:10px 13px;margin-bottom:12px;font-size:13px;color:#1a4a1a;line-height:1.55;">${bufNote.innerHTML}</div>`;
+  }
+
+  if(disclaimer){
+    html+=`<div style="background:#fff3e0;border:1.5px solid #e8a060;border-radius:8px;padding:10px 13px;margin-bottom:18px;font-size:12px;color:#7a3a0a;line-height:1.55;">${disclaimer.innerHTML}</div>`;
+  }
+
+  if(chartImgSrc){
+    html+=`<img src="${chartImgSrc}" style="width:100%;border-radius:8px;display:block;">`;
+    if(chartNoteEl){
+      html+=`<div style="font-size:11px;color:#7a7a9a;text-align:center;margin-top:6px;line-height:1.4;">${chartNoteEl.textContent}</div>`;
+    }
+  }
+
+  html+=`<div style="margin-top:24px;padding-top:10px;border-top:1px solid #ede9e0;font-size:11px;color:#7a7a9a;text-align:center;">
+    KapitalKompasset · Dette er ikke finansiell rådgivning — kontakt en rådgiver for personlig veiledning.
+  </div>`;
+
+  wrap.innerHTML=html;
+  document.body.appendChild(wrap);
+
+  try{
+    const canvas=await html2canvas(wrap,{scale:2,useCORS:true,backgroundColor:'#ffffff'});
+    const imgData=canvas.toDataURL('image/png');
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const pdfW=pdf.internal.pageSize.getWidth();
+    const pdfH=pdf.internal.pageSize.getHeight();
+    const imgH=(canvas.height*pdfW)/canvas.width;
+    let y=0;
+    while(y<imgH){
+      if(y>0)pdf.addPage();
+      pdf.addImage(imgData,'PNG',0,-y,pdfW,imgH);
+      y+=pdfH;
+    }
+    pdf.save('kapitalkompasset-anbefaling.pdf');
+  }finally{
+    document.body.removeChild(wrap);
+    btn.disabled=false;
+    btn.textContent='📄 Last ned anbefaling (PDF)';
+  }
 }
 
 // Init landing
