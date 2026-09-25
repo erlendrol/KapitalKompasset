@@ -375,10 +375,107 @@ test('user input is shown as text, never parsed as HTML', () => {
 test('every external script is pinned with an integrity hash', () => {
   const html = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
   const tags = html.match(/<script\s[^>]*src=[^>]*>/g) || [];
-  assert.ok(tags.length >= 3);
+  assert.ok(tags.length >= 2);
+  assert.doesNotMatch(html, /<script[^>]*html2canvas/, 'html2canvas is no longer used');
   for (const tag of tags) {
     assert.match(tag, /src="https:\/\/cdn\.jsdelivr\.net\/npm\/[^"@]+@\d+\.\d+\.\d+\//, tag); // exact version
     assert.match(tag, /integrity="sha384-[A-Za-z0-9+/]{64}"/, tag);
     assert.match(tag, /crossorigin="anonymous"/, tag);
   }
+});
+
+// ── PDF ──
+const WIN1252 = /^[\n\x20-\x7E\xA1-\xFF€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]*$/;
+const fakeBtn = () => ({ disabled: false, textContent: '' });
+function assertPrintable(pdf) {
+  for (const t of pdf.texts) assert.match(t, WIN1252, `not printable with the built-in PDF font: ${JSON.stringify(t)}`);
+}
+
+test('pdfSafe/htmlToText keep Norwegian text and drop what the PDF font cannot print', () => {
+  const app = loadApp();
+  assert.equal(app.pdfSafe('💡 Min anbefaling: æøå ÆØÅ – « » ≈ 5\u00a0000 kr'), 'Min anbefaling: æøå ÆØÅ – « » ca. 5 000 kr');
+  assert.equal(app.htmlToText('<strong>Nå:</strong> 100%<br>neste &amp; siste'), 'Nå: 100%\nneste & siste');
+});
+
+test('landing PDF contains recommendation, assumptions, values and the chart', () => {
+  const app = loadApp();
+  const answers = answersWith({ 0: '5 000 kr/mnd og 100 000 kr engangsbeløp', 2: 'Ja, boliglån' });
+  answers.splice(3, 0, 'Ca. 4,5%');
+  answers.forEach(a => app.sayLanding(a));
+  const btn = fakeBtn();
+  app.downloadLandingPDF(btn);
+  const pdf = app.lastPdf();
+  assert.equal(pdf.saved, 'kapitalkompasset-anbefaling.pdf');
+  const text = pdf.allText();
+  for (const s of ['Min anbefaling', '100% aksjer', 'Slik kommer du i gang', 'Forutsetninger',
+    '5 000 kr/mnd + 100 000 kr engangsbeløp', 'ja, ca. 4,5% rente', '20 år', 'Høy', 'holde på og vente',
+    '3 måneder eller mer', 'Beregningsgrunnlag', 'Verdi etter 20 år', 'Nedbetaling boliglån', 'Side 1 av 2', 'Side 2 av 2']) {
+    assert.ok(text.includes(s), `missing "${s}"`);
+  }
+  assert.equal(pdf.images.length, 1, 'chart image');
+  assertPrintable(pdf);
+  assert.equal(btn.disabled, false);
+});
+
+test('buffer-first PDF shows both stages', () => {
+  const app = loadApp();
+  answersWith({ 1: 'Nei, ingen buffer' }).forEach(a => app.sayLanding(a));
+  app.downloadLandingPDF(fakeBtn());
+  const text = app.lastPdf().allText();
+  assert.match(text, /Min anbefaling: bygg buffer først/);
+  assert.match(text, /Nå: 100% høyrentekonto/);
+  assert.match(text, /Deretter: 100% aksjer/);
+  assert.match(text, /under 1 måned/);
+});
+
+test('advisory PDF (AI) includes income, costs and simulated results', () => {
+  const app = loadApp();
+  LANDING_ANSWERS.forEach(a => app.sayLanding(a));
+  app.sayLanding('Ja, vis meg full analyse');
+  app.sayAdv('Nei, nybegynner');
+  app.sayAdv('Lønn 600 000, utgifter 360 000');
+  assert.ok(app.advBubbles().some(b => b.innerHTML.includes('downloadAdvisoryPDF')), 'PDF button in the chat');
+  app.downloadAdvisoryPDF(fakeBtn());
+  const pdf = app.lastPdf();
+  assert.equal(pdf.saved, 'kapitalkompasset-analyse.pdf');
+  const text = pdf.allText();
+  for (const s of ['Din fullstendige analyse', 'Erfaring', 'Nybegynner', 'Inntekt etter skatt', '600 000 kr/år',
+    '360 000 kr/år', 'Monte Carlo', 'aksjefond 0,7%', 'Forventet verdi (median)', 'Pessimistisk (5%)', 'Tidshorisont']) {
+    assert.ok(text.includes(s), `missing "${s}"`);
+  }
+  assert.equal(pdf.images.length, 1);
+  assertPrintable(pdf);
+});
+
+test('advisory PDF (manual form) lists the form values and the assumed behaviour', () => {
+  const app = loadApp();
+  const vals = { startCapital: '50000', monthlySavings: '3000', horizon: '12', income: '500000', expenses: '300000',
+    bufferMonths: '4', costStocks: '0.5', costBonds: '0.2' };
+  for (const [id, v] of Object.entries(vals)) app.el(id).value = v;
+  app.chooseMode('manual');
+  app.calculate();
+  app.downloadAdvisoryPDF(fakeBtn());
+  const text = app.lastPdf().allText();
+  for (const s of ['Startkapital', '50 000 kr', '3 000 kr/mnd', '12 år', 'Offensiv', 'ikke spurt', '4 måneders utgifter',
+    'aksjefond 0,5%', 'rentefond 0,2%', 'Resultat etter 12 år']) {
+    assert.ok(text.includes(s), `missing "${s}"`);
+  }
+});
+
+test('a chart that cannot be drawn is stated in the PDF instead of silently missing', () => {
+  const app = loadApp();
+  LANDING_ANSWERS.forEach(a => app.sayLanding(a));
+  app.chartImage.url = '';
+  app.downloadLandingPDF(fakeBtn());
+  const pdf = app.lastPdf();
+  assert.equal(pdf.images.length, 0);
+  assert.match(pdf.allText(), /Grafen kunne ikke tegnes/);
+});
+
+test('PDF before any recommendation reports an error on the button instead of throwing', () => {
+  const app = loadApp();
+  const btn = fakeBtn();
+  app.downloadAdvisoryPDF(btn);
+  assert.equal(app.pdfs.length, 0);
+  assert.equal(btn.disabled, false);  // re-enabled (timers run synchronously in tests)
 });

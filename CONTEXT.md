@@ -8,7 +8,7 @@ This document describes the full architecture, data structures, logic, and desig
 
 KapitalKompasset is a single-file Norwegian investment advisory web app. It helps users decide what to do with their savings — producing a concrete allocation recommendation (e.g. "100% aksjer") with product suggestions, a growth chart, and educational content.
 
-**Single file, no backend, no API calls.** All logic runs client-side in vanilla JS. External dependencies are Chart.js 4.4.1, html2canvas 1.4.1 and jsPDF 2.5.1 from jsDelivr, each pinned with a Subresource Integrity (`integrity`) hash, plus Google Fonts.
+**Single file, no backend, no API calls.** All logic runs client-side in vanilla JS. External dependencies are Chart.js 4.4.1 and jsPDF 2.5.1 from jsDelivr, each pinned with a Subresource Integrity (`integrity`) hash, plus Google Fonts.
 
 **Two screens:**
 1. **Landing page** (`screenLanding`) — a quick 6-question chat flow that produces a recommendation in under a minute.
@@ -20,7 +20,7 @@ KapitalKompasset is a single-file Norwegian investment advisory web app. It help
 
 ```
 index.html
-├── <head>              Google Fonts, Chart.js / html2canvas / jsPDF CDN
+├── <head>              Google Fonts, Chart.js / jsPDF CDN
 ├── <style>             All CSS (~530 lines)
 ├── <body>
 │   ├── <header>        Nav bar (Hva skal jeg gjøre? | Dybdeanalyse | ↺ Nullstill)
@@ -424,6 +424,22 @@ Mobile breakpoint at `max-width: 680px`: advisory body stacks vertically, left p
 
 ---
 
+## PDF export
+
+Two PDFs, both built as real text with jsPDF (no screenshots):
+- **Landing** — `downloadLandingPDF(btn)`, button in the chat after the recommendation → `kapitalkompasset-anbefaling.pdf`
+- **Advisory** — `downloadAdvisoryPDF(btn)`, button under the chart in the results panel (AI and manual mode) and in the AI chat after the recommendation → `kapitalkompasset-analyse.pdf`. Always uses the latest `renderResults()` call.
+
+Flow: a spec builder (`landingPdfSpec()` / `advisoryPdfSpec()`) turns stored state into blocks (`h`, `h2`, `p`, `note`, `rows`, `chart`, `small`), and `renderPdf(spec)` lays them out on A4 with page breaks, a footer and "Side x av y". Content: the recommendation (`recParts()`, shared with `buildRecHTML`), **Forutsetninger** (`landingAnswerRows()` — also used for the advisory chat summary — plus experience/income/expenses, or the manual form values), **Beregningsgrunnlag** (allocation, return/tax assumptions or MC profile and costs), values at the horizon, the chart with legend and note, and the fund disclaimer.
+
+State kept for it: `lastLandingRec`, `landingChartData`/`landingChartInfo` (set in `deliverLandingRec`/`renderLandingChart`) and `lastResults`/`mainChartData` (set in `renderResults`; `deliverAdvRec` adds the chat intro).
+
+Gotchas:
+- **Text must pass through `pdfSafe()`** (or `htmlToText()` for HTML). jsPDF's built-in Helvetica only covers Windows-1252; any other character (emoji like 💡📋⚠️, ≈, →, box drawing) garbles the *whole line*. Æ/ø/å, en/em dash, « », • and · are fine.
+- **The chart is redrawn for the PDF** by `chartImageForPdf()` — a fixed-size canvas with `animation:false`, so it is complete no matter when the button is clicked or how the page is laid out. If it can't be drawn, the PDF says so instead of leaving the chart out.
+
+---
+
 ## Tests
 
 `npm test` (or `node --test tests/*.test.js`) — no dependencies. `tests/load-app.js` runs the inline `<script>` from `index.html` in Node with a minimal fake DOM and synchronous timers, so parsers and whole chat flows can be tested. Add a case there whenever you change a parser or `interpretInput`.
@@ -453,6 +469,6 @@ Mobile breakpoint at `max-width: 680px`: advisory body stacks vertically, left p
 - **`const MC = {...}`** — ~20kb of Monte Carlo simulation data. Do not modify. If you need to update it, replace the entire object.
 - **`const ENG = {...}`** — large inline JSON. Edit targeted keys with string replacement, don't rewrite the whole block.
 - **`ALLOC_TABLE`** — the core allocation matrix. Only change if the investment philosophy changes, and update this document if you do.
-- **CDN scripts** — Chart.js `4.4.1`, html2canvas `1.4.1`, jsPDF `2.5.1` from `cdn.jsdelivr.net/npm/`, with `integrity` + `crossorigin="anonymous"`. jsDelivr serves the npm files byte-for-byte, so a hash can be computed from the npm package: `npm pack <pkg>@<ver>`, then `openssl dgst -sha384 -binary <file> | base64`. A wrong hash makes the browser block the script (charts/PDF stop working), so never change a version or URL without updating the hash. Don't use cdnjs for these — it re-minifies some files (e.g. `chart.umd.min.js` doesn't exist in the npm package), so its hash can't be checked against npm. Don't upgrade Chart.js without testing all charts.
+- **CDN scripts** — Chart.js `4.4.1`, jsPDF `2.5.1` from `cdn.jsdelivr.net/npm/`, with `integrity` + `crossorigin="anonymous"`. jsDelivr serves the npm files byte-for-byte, so a hash can be computed from the npm package: `npm pack <pkg>@<ver>`, then `openssl dgst -sha384 -binary <file> | base64`. A wrong hash makes the browser block the script (charts/PDF stop working), so never change a version or URL without updating the hash. Don't use cdnjs for these — it re-minifies some files (e.g. `chart.umd.min.js` doesn't exist in the npm package), so its hash can't be checked against npm. Don't upgrade Chart.js without testing all charts.
 
 **User text is never inserted as HTML.** `landingAddBubble`/`advAddBubble` use `textContent` for `'user'` bubbles; only app-generated AI bubbles go through `innerHTML`.

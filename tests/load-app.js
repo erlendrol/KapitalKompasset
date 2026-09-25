@@ -45,23 +45,47 @@ function loadApp() {
   const setTimeout = fn => fn();
   // Records every chart config so tests can inspect the drawn datasets
   const charts = [];
-  class Chart { constructor(ctx, cfg) { charts.push(cfg); } destroy() {} }
+  const chartImage = { url: 'data:image/png;base64,' + 'A'.repeat(8000) };  // set url to '' to simulate a failed chart
+  class Chart {
+    constructor(ctx, cfg) { charts.push(cfg); }
+    destroy() {}
+    toBase64Image() { return chartImage.url; }
+  }
+  // Fake jsPDF: records text, images and the saved filename of every PDF
+  const pdfs = [];
+  class FakePdf {
+    constructor() { this.texts = []; this.images = []; this.pages = 1; this.saved = null; pdfs.push(this); }
+    get internal() { return { pageSize: { getWidth: () => 210, getHeight: () => 297 } }; }
+    text(t) { this.texts.push(...[].concat(t)); }
+    splitTextToSize(t) { return [t]; }
+    getTextWidth(t) { return t.length * 1.5; }
+    addImage(img) { this.images.push(img); }
+    addPage() { this.pages++; }
+    getNumberOfPages() { return this.pages; }
+    save(name) { this.saved = name; }
+    allText() { return this.texts.join('\n'); }
+  }
+  for (const m of ['setFont', 'setFontSize', 'setTextColor', 'setDrawColor', 'setFillColor', 'setLineWidth',
+    'setLineDashPattern', 'line', 'rect', 'setPage']) FakePdf.prototype[m] = () => {};
+  const window = { jspdf: { jsPDF: FakePdf } };
 
   const exportsSrc = `
     return {
       normaliseNumber, interpretInput, hBucket, LANDING_QUESTIONS,
-      landingSend, advSend, chooseMode, renderLandingChart, renderResults,
+      landingSend, advSend, chooseMode, renderLandingChart, renderResults, calculate,
+      downloadLandingPDF, downloadAdvisoryPDF, pdfSafe, htmlToText,
       get collectedState() { return collectedState; },
       get landingStep() { return landingStep; },
       get advStep() { return advStep; },
       get advMode() { return advMode; },
     };`;
-  const app = new Function('document', 'setTimeout', 'Chart', script + exportsSrc)(document, setTimeout, Chart);
+  const app = new Function('document', 'setTimeout', 'Chart', 'window', script + exportsSrc)(document, setTimeout, Chart, window);
 
   const bubbles = id => els[id] ? els[id].children : [];
   // Object.create keeps the live getters (spreading would snapshot them)
   return Object.assign(Object.create(app), {
-    charts,
+    charts, pdfs, chartImage,
+    lastPdf: () => pdfs[pdfs.length - 1],
     el: id => document.getElementById(id),
     landingBubbles: () => bubbles('landingMsgs'),
     advBubbles: () => bubbles('advChatHistory'),

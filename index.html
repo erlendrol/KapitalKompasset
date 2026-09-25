@@ -8,7 +8,6 @@
      the npm packages (cdnjs re-minifies some files). Changing a version means a new hash:
      openssl dgst -sha384 -binary <file from the npm package> | base64 -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -70,6 +69,9 @@ header{background:var(--ink);color:white;padding:0 2rem;height:56px;display:flex
 .bubble.ai .deeper-btn:hover{background:var(--teal);}
 .bubble.ai .pdf-btn{display:inline-block;margin-top:10px;margin-left:8px;background:white;color:var(--teal);border:1.5px solid var(--teal);padding:8px 18px;border-radius:50px;font-family:'DM Sans',sans-serif;font-size:0.82rem;cursor:pointer;font-weight:500;transition:all 0.15s;}
 .bubble.ai .pdf-btn:hover{background:var(--teal-light);}
+.results-pdf-btn{display:inline-block;margin:12px 0 4px;background:white;color:var(--teal);border:1.5px solid var(--teal);padding:8px 18px;border-radius:50px;font-family:'DM Sans',sans-serif;font-size:0.82rem;cursor:pointer;font-weight:500;transition:all 0.15s;}
+.results-pdf-btn:hover{background:var(--teal-light);}
+.pdf-btn:disabled,.results-pdf-btn:disabled{opacity:0.6;cursor:wait;}
 .bubble.ai .pdf-btn:disabled{opacity:0.6;cursor:default;}
 
 .quick-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding:0.25rem 0;}
@@ -516,6 +518,7 @@ input[type=number]:focus{border-color:var(--teal);}
             <span>━ Forventet</span><span>▓ 90% bånd</span><span id="legendBank">╌ Bankkonto</span>
           </div>
         </div>
+        <button class="pdf-btn results-pdf-btn" onclick="downloadAdvisoryPDF(this)">📄 Last ned analyse (PDF)</button>
         <div class="result-disclaimer" id="capNote"></div>
         <div id="recBoxContent" style="margin-top:1.25rem;"></div>
       </div>
@@ -696,6 +699,8 @@ function closeDrawer(){}
 // FORM STATE
 // ══════════════════════════════════════
 let selectedRisk="Offensiv",chartInst=null;
+// Last advisory result + chart data, kept for the PDF (see advisoryPdfSpec)
+let mainChartData=null, lastResults=null;
 const mcAnswers={};
 
 function selectPill(el,gid){document.querySelectorAll(`#${gid} .pill`).forEach(p=>{p.classList.remove('active','teal');});el.classList.add('active','teal');}
@@ -822,28 +827,36 @@ function renderResults(params){
   document.getElementById('legendBank').classList.toggle('hidden',isBank);
   if(chartInst)chartInst.destroy();
   const labels=Array.from({length:horizon},(_,i)=>`År ${i+1}`);
-  chartInst=new Chart(document.getElementById('mainChart').getContext('2d'),{type:'line',data:{labels,datasets:[
+  const mainDatasets=[
     {data:p95,borderColor:'transparent',backgroundColor:'rgba(42,127,127,0.12)',fill:'+1',pointRadius:0,tension:0.4,label:'95%'},
     {data:p50,borderColor:profile.color,backgroundColor:'transparent',borderWidth:2.5,pointRadius:0,tension:0.4,fill:false,label:'Forventet'},
     {data:p5,borderColor:'transparent',backgroundColor:'rgba(42,127,127,0.12)',fill:'-1',pointRadius:0,tension:0.4,label:'5%'},
     // Dashed bank comparison — skipped when the recommendation itself is bank (it would overlap the main line)
     ...(isBank?[]:[{data:cash,borderColor:'#aaa',borderDash:[5,4],backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0.4,fill:false,label:'Bankkonto'}]),
-  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.parsed.y)}`}}},scales:{x:{ticks:{maxTicksLimit:10,font:{family:'DM Sans',size:11},color:'#7a7a9a'},grid:{color:'#f0ece3'}},y:{ticks:{font:{family:'DM Sans',size:11},color:'#7a7a9a',callback:v=>fmt(v)},grid:{color:'#f0ece3'}}}}});
+  ];
+  mainChartData={labels,datasets:mainDatasets};
+  chartInst=new Chart(document.getElementById('mainChart').getContext('2d'),{type:'line',data:{labels,datasets:mainDatasets},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.parsed.y)}`}}},scales:{x:{ticks:{maxTicksLimit:10,font:{family:'DM Sans',size:11},color:'#7a7a9a'},grid:{color:'#f0ece3'}},y:{ticks:{font:{family:'DM Sans',size:11},color:'#7a7a9a',callback:v=>fmt(v)},grid:{color:'#f0ece3'}}}}});
 
   // Inject rec-box into results panel (for manual mode, or any caller that sets showRecBox)
+  const engKey = allocToEngKey(pAlloc);
+  const hKey   = hKeyFromYears(horizon);
+  const bKey   = bufKey(bufferMonths);  // not `||3`: 0 months must stay 0
+  const rChar  = params.riskComfort||'N';
+  const bufNote= bufferAdvisoryNote(cap.bufferFlag, params.monthly||0);
+  const pct    = Math.round(pAlloc*100);
   const recBoxEl = document.getElementById('recBoxContent');
   if(recBoxEl && params.showRecBox){
-    const engKey = allocToEngKey(pAlloc);
-    const hKey   = hKeyFromYears(horizon);
-    const bKey   = bufKey(bufferMonths);  // not `||3`: 0 months must stay 0
-    const rChar  = params.riskComfort||'N';
-    const bufNote= bufferAdvisoryNote(cap.bufferFlag, params.monthly||0);
-    recBoxEl.innerHTML = buildRecHTML(engKey, hKey, bKey, rChar, bufNote, '', Math.round(pAlloc*100), expenses/12);
+    recBoxEl.innerHTML = buildRecHTML(engKey, hKey, bKey, rChar, bufNote, '', pct, expenses/12);
   } else if(recBoxEl){
     recBoxEl.innerHTML = '';
   }
 
-  return {p50:p50[horizon-1],p5:p5[horizon-1],p95:p95[horizon-1],profile,pAlloc,ar,cap};
+  const result={p50:p50[horizon-1],p5:p5[horizon-1],p95:p95[horizon-1],profile,pAlloc,ar,cap};
+  lastResults={...result,isBank,
+    params:{startCapital,monthly,horizon,income,expenses,bufferMonths,costS,costB,riskLabel},
+    rec:recParts(engKey,bKey,bufNote,pct,expenses/12),
+    introHTML:''};  // deliverAdvRec adds the chat intro
+  return result;
 }
 
 function calculate(){
@@ -860,6 +873,7 @@ function calculate(){
     showRecBox:true,
     riskComfort:'N'  // manual mode has no behaviour question — neutral is the assumption
   });
+  lastResults.source='manual';
   closeDrawer();
 }
 
@@ -900,6 +914,8 @@ function injectFundDisclaimer(el){
 
 // Landing growth chart
 let landingChartInst=null;
+// Last landing chart, kept so the PDF can redraw it without animation (see chartImageForPdf)
+let landingChartData=null, landingChartInfo=null;
 function renderLandingChart(p){
   const {lumpSum=0,monthly=0,years=15,mortgageRate=0.03,debtLabel='lån',stockFraction=1.0,includeInvest=true,includeMortgage=false,bufferFirst=false}=p;
   const wrap=document.getElementById('landingChartWrap');
@@ -945,11 +961,16 @@ function renderLandingChart(p){
     noteExtra = ` Bankkonto er vist netto etter 22% skatt på renter (${(CASH_NET*100).toFixed(2)}%).`;
   }
   if(bufferFirst&&includeInvest) noteExtra += ' Investeringen gjelder først når bufferen er bygget opp.';
+  const chartNote=`Illustrerende beregning${includeInvest?` — investering basert på ${returnLabel} etter kostnader${nonStock>0?', der rentedelen er vist netto etter 22% skatt':''}`:''}.${noteExtra}`;
   wrap.innerHTML=`<div class="landing-chart-card">
     <div class="chart-header"><span class="chart-headline">${headline}</span><div class="chart-legend">${legendItems}</div></div>
     <div class="chart-canvas-wrap"><canvas id="landingChart"></canvas></div>
-    <div class="chart-note">Illustrerende beregning${includeInvest?` — investering basert på ${returnLabel} etter kostnader${nonStock>0?', der rentedelen er vist netto etter 22% skatt':''}`:''}.${noteExtra}</div>
+    <div class="chart-note">${chartNote}</div>
   </div>`;
+  landingChartData={labels,datasets};
+  landingChartInfo={years,headline,note:chartNote,stockFraction,includeInvest,includeMortgage,debtLabel,mortgageRate,
+    investReturn:INVEST_RETURN,stockReturn:STOCK_R,bondReturn:BOND_R,bondNet:BOND_NET,cashNominal:CASH_NOMINAL,cashNet:CASH_NET,mortgageNet:MORTGAGE_NET,
+    finals:{invest:investSeries.at(-1),bank:savingsSeries.at(-1),mortgage:mortgageSeries.at(-1)}};
   if(landingChartInst)landingChartInst.destroy();
   landingChartInst=new Chart(document.getElementById('landingChart').getContext('2d'),{
     type:'line',data:{labels,datasets},
@@ -982,30 +1003,46 @@ function riskChar(score){if(score<=1)return'C';if(score<=2)return'N';return'A';}
 // monthlyExpenses (optional, kr) turns the buffer target into an amount.
 function isBufferFirst(bKey, pAllocPct){return bKey==='L'&&pAllocPct>0;}
 const BUFFER_FIRST_INTRO='Du har nesten ingen buffer i dag, så det første steget er å bygge en buffer i en høyrentekonto. <strong>Først når bufferen er på plass, anbefaler jeg å begynne å investere</strong> — slik som vist under.';
-function buildRecHTML(engKey, hKey, bKey, rChar, bufferNoteHTML, horizNote, pAllocPct, monthlyExpenses){
+const FUND_DISCLAIMER_HTML='<strong>Merk:</strong> Produktene og plattformene nevnt ovenfor er illustrative eksempler — ikke en anbefaling om å velge én fremfor en annen. Kombinasjonsfond er ofte aktivt forvaltet — se etter lav forvaltningsavgift (helst under 0,5%) og vurder passivt forvaltede alternativer. Gjør egne undersøkelser eller kontakt din bank.';
+
+// The recommendation as structured parts — rendered as HTML by buildRecHTML and as text in the PDF
+function recParts(engKey, bKey, bufferNoteHTML, pAllocPct, monthlyExpenses){
   const allocLine = pAllocPct!==undefined
     ? `${pAllocPct}% aksjer · ${ENG.products[engKey]}`
     : ENG.products[engKey];
-  const disclaimer = `<div class="fund-disclaimer">⚠️ <strong>Merk:</strong> Produktene og plattformene nevnt ovenfor er illustrative eksempler — ikke en anbefaling om å velge én fremfor en annen. Kombinasjonsfond er ofte aktivt forvaltet — se etter lav forvaltningsavgift (helst under 0,5%) og vurder passivt forvaltede alternativer. Gjør egne undersøkelser eller kontakt din bank.</div>`;
   if(isBufferFirst(bKey, pAllocPct)){
     const minAmt = monthlyExpenses>0 ? ` (ca. ${fmt(monthlyExpenses*BUFFER_MIN_MONTHS)})` : '';
     const targetAmt = monthlyExpenses>0 ? ` (ca. ${fmt(monthlyExpenses*BUFFER_TARGET_MONTHS)})` : '';
-    return `<div class="rec-box buffer-first">
-<div class="rec-title">💡 Min anbefaling: bygg buffer først</div>
-<div class="alloc-line"><strong>Nå:</strong> 100% høyrentekonto — til du har minst én måneds utgifter${minAmt} i buffer</div>
-<div class="alloc-line"><strong>Deretter:</strong> ${allocLine}</div>
-<div class="next-step">📋 <strong>Slik kommer du i gang:</strong><br>
+    return {
+      bufferFirst:true,
+      title:'Min anbefaling: bygg buffer først',
+      allocLines:[
+        `<strong>Nå:</strong> 100% høyrentekonto — til du har minst én måneds utgifter${minAmt} i buffer`,
+        `<strong>Deretter:</strong> ${allocLine}`
+      ],
+      nextStepHTML:`<br>
 <strong>1. Bygg bufferen før du investerer.</strong> Opprett en høyrentekonto og sett all sparing dit til bufferen er på minst én måneds utgifter${minAmt}. Ikke begynn å investere før dette er på plass — uten buffer kan en uventet utgift tvinge deg til å selge investeringene når markedet er nede.<br>
-<strong>2. Begynn å investere.</strong> Når bufferen er på plass: ${ENG.nextSteps[engKey]} Bygg samtidig bufferen videre til ${BUFFER_TARGET_MONTHS} måneders utgifter${targetAmt}.</div>
-<div class="flip-note">📚 <button class="info-link" onclick="openInfoDrawer()">Mer informasjon om fondssparing her</button></div>
-</div>${disclaimer}`;
+<strong>2. Begynn å investere.</strong> Når bufferen er på plass: ${ENG.nextSteps[engKey]} Bygg samtidig bufferen videre til ${BUFFER_TARGET_MONTHS} måneders utgifter${targetAmt}.`,
+      bufferNoteHTML:''  // the buffer-first steps replace the buffer note
+    };
   }
-  return `<div class="rec-box">
-<div class="rec-title">💡 Min anbefaling</div>
-<div class="alloc-line">${allocLine}</div>
-<div class="next-step">📋 <strong>Slik kommer du i gang:</strong> ${ENG.nextSteps[engKey]}</div>
+  return {
+    bufferFirst:false,
+    title:'Min anbefaling',
+    allocLines:[allocLine],
+    nextStepHTML:` ${ENG.nextSteps[engKey]}`,
+    bufferNoteHTML:bufferNoteHTML||''
+  };
+}
+
+function buildRecHTML(engKey, hKey, bKey, rChar, bufferNoteHTML, horizNote, pAllocPct, monthlyExpenses){
+  const r = recParts(engKey, bKey, bufferNoteHTML, pAllocPct, monthlyExpenses);
+  return `<div class="rec-box${r.bufferFirst?' buffer-first':''}">
+<div class="rec-title">💡 ${r.title}</div>
+${r.allocLines.map(l=>`<div class="alloc-line">${l}</div>`).join('\n')}
+<div class="next-step">📋 <strong>Slik kommer du i gang:</strong>${r.nextStepHTML}</div>
 <div class="flip-note">📚 <button class="info-link" onclick="openInfoDrawer()">Mer informasjon om fondssparing her</button></div>
-</div>${bufferNoteHTML}${disclaimer}`;
+</div>${r.bufferNoteHTML}<div class="fund-disclaimer">⚠️ ${FUND_DISCLAIMER_HTML}</div>`;
 }
 
 // ══════════════════════════════════════
@@ -1227,6 +1264,7 @@ function landingSend(){
   },fi.type==='fallback'?800:400);
 }
 
+let lastLandingRec=null;  // kept for the PDF (see landingPdfSpec)
 function deliverLandingRec(){
   // Compute equity allocation from (riskWillingness, behaviour) combo
   const cap=capacityFromInputs(collectedState.income||500000,collectedState.expenses||300000,collectedState.bufferMonths);
@@ -1256,6 +1294,8 @@ function deliverLandingRec(){
   const bufferFirst = isBufferFirst(bKey, Math.round(pAlloc*100));
   const intro = bufferFirst ? BUFFER_FIRST_INTRO : `${title} ${horizNote}`;
   const recHTML=`${intro}${debtNote}<br><br>${buildRecHTML(engKey,hKey,bKey,collectedState.riskComfort,bufNote,'',Math.round(pAlloc*100),collectedState.expenses/12)}`;
+  lastLandingRec={introHTML:`${intro}${debtNote}`,pAlloc,
+    rec:recParts(engKey,bKey,bufNote,Math.round(pAlloc*100),collectedState.expenses/12)};
   landingAddBubble(recHTML,'ai');
 
   // Render chart with allocation-adjusted expected return
@@ -1274,7 +1314,7 @@ function deliverLandingRec(){
   // Show deeper analysis button
   setTimeout(()=>{
     const d=document.createElement('div');d.className='bubble ai';
-    d.innerHTML=`Vil du se en fullstendig analyse med din eksakte porteføljeprofil og graf over tid?<br><br><button class="deeper-btn" onclick="triggerDeeper()">Se full analyse i KapitalKompasset →</button><button class="pdf-btn" onclick="downloadLandingPDF(this)">📄 Last ned anbefaling (PDF)</button>`;
+    d.innerHTML=`Vil du se en fullstendig analyse med din eksakte porteføljeprofil og graf over tid?<br><br><button class="deeper-btn" onclick="triggerDeeper()">Se full analyse i KapitalKompasset →</button><button class="pdf-btn" onclick="downloadLandingPDF(this)">${PDF_LANDING_LABEL}</button>`;
     document.getElementById('landingMsgs').appendChild(d);
     document.querySelector('#screenLanding .landing-chat').scrollTop=99999;
     setLandingQuick(['Ja, vis meg full analyse','Nei, dette er nok']);
@@ -1445,90 +1485,222 @@ function triggerDeeper(){
   else prefillManualFromState();
 }
 
-async function downloadLandingPDF(btn){
-  btn.disabled=true;
-  btn.textContent='⏳ Genererer…';
+// ══════════════════════════════════════
+// PDF EXPORT — real text via jsPDF + the chart redrawn without animation.
+// (Replaces an html2canvas screenshot: 9–11 MB, chart could be captured
+//  mid-animation or not at all, and pages were cut mid-content.)
+// ══════════════════════════════════════
+const PDF_LANDING_LABEL='📄 Last ned anbefaling (PDF)';
+const PDF_ADV_LABEL='📄 Last ned analyse (PDF)';
+const PDF_FOOTER='KapitalKompasset · Dette er ikke finansiell rådgivning — kontakt en rådgiver for personlig veiledning.';
 
-  const date=new Date().toLocaleDateString('nb-NO',{year:'numeric',month:'long',day:'numeric'});
+// jsPDF's built-in Helvetica only covers Windows-1252: any other character (emoji, ≈, →)
+// garbles the whole line, so everything going into the PDF passes through pdfSafe.
+const CP1252_EXTRA='€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ';
+function pdfSafe(text){
+  return String(text??'')
+    .replace(/[   ]/g,' ')
+    .replace(/≈/g,'ca.').replace(/→/g,'->')
+    .replace(/[^\n\x20-\x7E\xA1-\xFF]/g,ch=>CP1252_EXTRA.includes(ch)?ch:'')
+    .replace(/[ \t]+/g,' ').replace(/ *\n */g,'\n').trim();
+}
+function htmlToText(html){
+  const t=String(html??'')
+    .replace(/<br\s*\/?>/gi,'\n').replace(/<\/(p|div|li|ul)>/gi,'\n').replace(/<li[^>]*>/gi,'• ')
+    .replace(/<[^>]+>/g,'')
+    .replace(/&nbsp;/g,' ').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&');
+  return pdfSafe(t).replace(/\n{3,}/g,'\n\n');
+}
 
-  // Capture chart as image before building the print container
-  const chartCanvas=document.getElementById('landingChart');
-  const chartImgSrc=chartCanvas?chartCanvas.toDataURL('image/png'):null;
-  const chartNoteEl=document.querySelector('.landing-chart-card .chart-note');
+// Recommendation + next steps, shared by both PDFs
+function recPdfBlocks(rec,introHTML){
+  const blocks=[{type:'h',text:rec.title}];
+  if(introHTML)blocks.push({type:'p',text:htmlToText(introHTML)});
+  rec.allocLines.forEach(l=>blocks.push({type:'p',text:htmlToText(l),bold:true}));
+  blocks.push({type:'h2',text:'Slik kommer du i gang'},{type:'p',text:htmlToText(rec.nextStepHTML)});
+  if(rec.bufferNoteHTML)blocks.push({type:'note',text:htmlToText(rec.bufferNoteHTML)});
+  return blocks;
+}
+function pdfLegend(datasets){
+  return datasets.filter(d=>d.label!=='5%').map(d=>d.label==='95%'
+    ?{label:'Utfallsrom 5–95%',fill:d.backgroundColor}
+    :{label:d.label==='Forventet'?'Forventet (median)':d.label,line:d.borderColor,dashed:!!d.borderDash});
+}
 
-  // Grab content from the chat
-  const msgs=document.getElementById('landingMsgs');
-  const recBox=msgs?msgs.querySelector('.rec-box'):null;
-  const bufNote=msgs?msgs.querySelector('.buffer-note'):null;
-  const disclaimer=msgs?msgs.querySelector('.fund-disclaimer'):null;
+function landingPdfSpec(){
+  const r=lastLandingRec,info=landingChartInfo,c=collectedState;
+  if(!r||!info)return null;
+  const pct=Math.round(r.pAlloc*100);
+  const basis=[['Anbefalt fordeling',pct===0?'100% bankinnskudd (høyrentekonto)':pct===100?'100% aksjer':`${pct}% aksjer · ${100-pct}% renter og bank`],
+    ['Aksjer',`${pctText(info.stockReturn)} forventet avkastning per år (ASK — skatten utsettes)`]];
+  if(pct>0&&pct<100)basis.push(['Rentefond',`${pctText(info.bondReturn)} per år, ${pctText(info.bondNet,2)} etter 22% skatt`]);
+  basis.push(['Bankkonto',`${pctText(info.cashNominal)} per år, ${pctText(info.cashNet,2)} etter 22% skatt`]);
+  if(info.includeInvest)basis.push(['Din portefølje',`${pctText(info.investReturn)} forventet avkastning per år etter kostnader`]);
+  if(info.includeMortgage)basis.push([`Nedbetaling ${info.debtLabel}`,`${pctText(info.mortgageRate)} rente, ${pctText(info.mortgageNet,2)} etter skattefradrag`]);
+  const values=[['Totalt innskutt',fmt(c.lumpSum+c.monthly*12*info.years)]];
+  if(info.includeInvest)values.push(['Investering',fmt(info.finals.invest)]);
+  if(info.includeMortgage)values.push([`Nedbetaling ${info.debtLabel}`,fmt(info.finals.mortgage)]);
+  values.push(['Bankkonto',fmt(info.finals.bank)]);
+  return {filename:'kapitalkompasset-anbefaling.pdf',subtitle:'Din spareanbefaling',blocks:[
+    ...recPdfBlocks(r.rec,r.introHTML),
+    {type:'h',text:'Forutsetninger'},{type:'p',text:'Anbefalingen bygger på disse svarene:',size:9.5},
+    {type:'rows',rows:landingAnswerRows()},
+    {type:'h2',text:'Beregningsgrunnlag'},{type:'rows',rows:basis},
+    {type:'h2',text:`Verdi etter ${info.years} år`},{type:'rows',rows:values},
+    {type:'chart',title:info.headline,data:landingChartData,legend:pdfLegend(landingChartData.datasets),note:info.note},
+    {type:'small',text:htmlToText(FUND_DISCLAIMER_HTML)}]};
+}
 
-  // Build an off-screen container with fully inlined styles (no CSS vars)
-  const wrap=document.createElement('div');
-  wrap.style.cssText='position:fixed;left:-9999px;top:0;width:700px;background:#ffffff;padding:40px;font-family:DM Sans,sans-serif;font-size:14px;color:#1a1a2e;box-sizing:border-box;line-height:1.6;';
+function advisoryPdfSpec(){
+  const R=lastResults;
+  if(!R||!mainChartData)return null;
+  const P=R.params,c=collectedState,pct=Math.round(R.pAlloc*100);
+  const perYear=v=>v>0?`${fmt(v)}/år`:'ikke oppgitt';
+  const answers=R.source==='ai'
+    ?[['Erfaring',c.suitability==='expert'?'Har erfaring eller utdanning innen finans':'Nybegynner'],...landingAnswerRows(),
+      ['Inntekt etter skatt',perYear(c.income)],['Utgifter',perYear(c.expenses)]]
+    :[['Startkapital',fmt(P.startCapital)],['Månedlig sparing',`${fmt(P.monthly)}/mnd`],['Tidshorisont',`${P.horizon} år`],
+      ['Risikovilje',P.riskLabel],['Ved 20% fall','ikke spurt — antatt: holde på og vente'],
+      ['Buffer',`${P.bufferMonths.toLocaleString('nb-NO')} måneders utgifter`],['Inntekt etter skatt',perYear(P.income)],['Utgifter',perYear(P.expenses)]];
+  const basis=[['Anbefalt fordeling',`${pct}% aksjer · ${100-pct}% ${R.isBank?'bankinnskudd':'obligasjoner'}`],
+    ['Simuleringsprofil',R.isBank?'Bankkonto':`${R.profile.name} (${Math.round(R.profile.stocks*100)}% aksjer)`],
+    ['Metode','Monte Carlo-simulering med 1 000 scenarioer'],
+    ['Årlige kostnader',R.isBank?'ingen (bankkonto)':`aksjefond ${pctText(P.costS,2)}, rentefond ${pctText(P.costB,2)}`]];
+  const values=[['Totalt innskutt',fmt(P.startCapital+P.monthly*12*P.horizon)],['Forventet verdi (median)',fmt(R.p50)],
+    ['Pessimistisk (5%)',fmt(R.p5)],['Optimistisk (95%)',fmt(R.p95)]];
+  return {filename:'kapitalkompasset-analyse.pdf',subtitle:'Din fullstendige analyse',blocks:[
+    ...recPdfBlocks(R.rec,R.introHTML),
+    {type:'h',text:'Forutsetninger'},{type:'p',text:'Anbefalingen bygger på disse opplysningene:',size:9.5},
+    {type:'rows',rows:answers},
+    {type:'h2',text:'Beregningsgrunnlag'},{type:'rows',rows:basis},
+    {type:'h2',text:`Resultat etter ${P.horizon} år`},{type:'rows',rows:values},
+    {type:'chart',title:`Simulert porteføljeutvikling over ${P.horizon} år`,data:mainChartData,legend:pdfLegend(mainChartData.datasets),
+      note:`Linjen viser forventet utvikling (median). Båndet viser utfallsrommet der 90% av scenarioene havner (5–95%). Kostnader er trukket fra.${R.isBank?'':' Stiplet linje: bankkonto til sammenligning.'}`},
+    {type:'small',text:htmlToText(FUND_DISCLAIMER_HTML)}]};
+}
 
-  let html=`
-    <div style="border-bottom:2px solid #2a7f7f;padding-bottom:14px;margin-bottom:22px;display:flex;justify-content:space-between;align-items:flex-end;">
-      <div>
-        <div style="font-size:20px;font-weight:700;color:#1a1a2e;letter-spacing:-0.3px;">KapitalKompasset</div>
-        <div style="font-size:13px;color:#7a7a9a;margin-top:3px;">Din spareanbefaling</div>
-      </div>
-      <div style="font-size:12px;color:#7a7a9a;">${date}</div>
-    </div>`;
-
-  if(recBox){
-    // Strip interactive buttons from clone
-    const clone=recBox.cloneNode(true);
-    clone.querySelectorAll('button').forEach(b=>b.remove());
-    html+=`<div style="background:#d4eeee;border:1px solid #a0d0d0;border-radius:10px;padding:14px 16px;margin-bottom:12px;">
-      <div style="font-weight:600;color:#2a7f7f;font-size:14px;margin-bottom:6px;">${clone.querySelector('.rec-title')?clone.querySelector('.rec-title').innerHTML:'💡 Min anbefaling'}</div>
-      ${[...clone.querySelectorAll('.alloc-line')].map(l=>`<div style="font-size:13px;color:#3d3d5c;margin:4px 0;">${l.innerHTML}</div>`).join('')}
-      <div style="font-size:12px;color:#3d3d5c;background:#f8f6f1;border-radius:7px;padding:8px 10px;margin-top:8px;line-height:1.5;">${clone.querySelector('.next-step')?clone.querySelector('.next-step').innerHTML:''}</div>
-    </div>`;
-  }
-
-  if(bufNote){
-    html+=`<div style="background:#e8f5e9;border:1.5px solid #81c784;border-radius:8px;padding:10px 13px;margin-bottom:12px;font-size:13px;color:#1a4a1a;line-height:1.55;">${bufNote.innerHTML}</div>`;
-  }
-
-  if(disclaimer){
-    html+=`<div style="background:#fff3e0;border:1.5px solid #e8a060;border-radius:8px;padding:10px 13px;margin-bottom:18px;font-size:12px;color:#7a3a0a;line-height:1.55;">${disclaimer.innerHTML}</div>`;
-  }
-
-  if(chartImgSrc){
-    html+=`<img src="${chartImgSrc}" style="width:100%;border-radius:8px;display:block;">`;
-    if(chartNoteEl){
-      html+=`<div style="font-size:11px;color:#7a7a9a;text-align:center;margin-top:6px;line-height:1.4;">${chartNoteEl.textContent}</div>`;
-    }
-  }
-
-  html+=`<div style="margin-top:24px;padding-top:10px;border-top:1px solid #ede9e0;font-size:11px;color:#7a7a9a;text-align:center;">
-    KapitalKompasset · Dette er ikke finansiell rådgivning — kontakt en rådgiver for personlig veiledning.
-  </div>`;
-
-  wrap.innerHTML=html;
-  document.body.appendChild(wrap);
-
+// Redraw a chart for print: fixed size, no animation, so it is always complete
+const PDF_CHART_W=900, PDF_CHART_H=420;
+function chartImageForPdf(data){
+  if(!data||typeof Chart==='undefined')return null;
+  let chart=null;
   try{
-    const canvas=await html2canvas(wrap,{scale:2,useCORS:true,backgroundColor:'#ffffff'});
-    const imgData=canvas.toDataURL('image/png');
-    const {jsPDF}=window.jspdf;
-    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-    const pdfW=pdf.internal.pageSize.getWidth();
-    const pdfH=pdf.internal.pageSize.getHeight();
-    const imgH=(canvas.height*pdfW)/canvas.width;
-    let y=0;
-    while(y<imgH){
-      if(y>0)pdf.addPage();
-      pdf.addImage(imgData,'PNG',0,-y,pdfW,imgH);
-      y+=pdfH;
-    }
-    pdf.save('kapitalkompasset-anbefaling.pdf');
+    const canvas=document.createElement('canvas');
+    canvas.width=PDF_CHART_W;canvas.height=PDF_CHART_H;
+    canvas.style.width=PDF_CHART_W+'px';canvas.style.height=PDF_CHART_H+'px';
+    const font={family:'Helvetica, Arial, sans-serif',size:13};
+    chart=new Chart(canvas.getContext('2d'),{type:'line',
+      data:{labels:[...data.labels],datasets:data.datasets.map(d=>({...d,data:[...d.data]}))},
+      options:{responsive:false,animation:false,devicePixelRatio:2,
+        plugins:{legend:{display:false},tooltip:{enabled:false}},
+        scales:{x:{ticks:{maxTicksLimit:10,font,color:'#4a4a6a'},grid:{color:'#ece8df'}},
+                y:{ticks:{font,color:'#4a4a6a',callback:v=>fmt(v)},grid:{color:'#ece8df'}}}}});
+    const url=chart.toBase64Image('image/png',1);
+    return url&&url.length>5000?url:null;  // a blank canvas encodes to a tiny PNG
+  }catch(e){
+    console.error('PDF chart',e);return null;
   }finally{
-    document.body.removeChild(wrap);
-    btn.disabled=false;
-    btn.textContent='📄 Last ned anbefaling (PDF)';
+    if(chart)chart.destroy();
   }
 }
+
+function pdfColor(c){
+  if(!c)return [122,122,154];
+  let m=c.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if(m){const h=m[1].length===3?m[1].replace(/./g,x=>x+x):m[1];return [0,2,4].map(i=>parseInt(h.slice(i,i+2),16));}
+  m=c.match(/rgba?\(([^)]+)\)/);
+  if(m){const [r,g,b,a=1]=m[1].split(',').map(Number);return [r,g,b].map(v=>Math.round(v*a+255*(1-a)));}
+  return [122,122,154];
+}
+
+function renderPdf(spec){
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF({unit:'mm',format:'a4',compress:true});
+  const W=pdf.internal.pageSize.getWidth(),H=pdf.internal.pageSize.getHeight();
+  const M=18,CW=W-2*M,BOTTOM=H-18;
+  const INK=[26,26,46],SOFT=[74,74,106],MUTED=[122,122,154],TEAL=[42,127,127],RULE=[236,232,223];
+  const lh=pt=>pt*0.3528*1.35;
+  let y=M;
+  const need=h=>{if(y+h>BOTTOM){pdf.addPage();y=M;}};
+  const font=(size,style='normal',color=INK)=>{pdf.setFont('helvetica',style);pdf.setFontSize(size);pdf.setTextColor(...color);};
+  const write=(text,{size=10,style='normal',color=INK,x=M,width=CW,after=1.8}={})=>{
+    font(size,style,color);
+    for(const para of pdfSafe(text).split('\n')){
+      for(const line of pdf.splitTextToSize(para||' ',width)){need(lh(size));pdf.text(line,x,y,{baseline:'top'});y+=lh(size);}
+    }
+    y+=after;
+  };
+
+  // Header
+  font(18,'bold');pdf.text('KapitalKompasset',M,y,{baseline:'top'});
+  font(9,'normal',MUTED);pdf.text(pdfSafe(new Date().toLocaleDateString('nb-NO',{year:'numeric',month:'long',day:'numeric'})),W-M,y+1.5,{baseline:'top',align:'right'});
+  y+=8;font(10,'normal',MUTED);pdf.text(pdfSafe(spec.subtitle),M,y,{baseline:'top'});
+  y+=6;pdf.setDrawColor(...TEAL);pdf.setLineWidth(0.6);pdf.line(M,y,W-M,y);y+=6;
+
+  for(const b of spec.blocks){
+    if(b.type==='h'){y+=3;need(lh(13)+14);write(b.text,{size:13,style:'bold',color:TEAL,after:1});}
+    else if(b.type==='h2'){y+=1.5;need(lh(11)+10);write(b.text,{size:11,style:'bold',after:0.8});}
+    else if(b.type==='p')write(b.text,{size:b.size||10,style:b.bold?'bold':'normal',color:b.bold?INK:SOFT});
+    else if(b.type==='note')write(b.text,{size:9.5,style:'italic',color:SOFT});
+    else if(b.type==='small'){y+=3;write(b.text,{size:8,color:MUTED});}
+    else if(b.type==='rows'){
+      const LW=52;
+      for(const [k,v] of b.rows){
+        font(9.5);const vl=pdf.splitTextToSize(pdfSafe(v),CW-LW);
+        const h=Math.max(1,vl.length)*lh(9.5)+2;
+        need(h);
+        font(9.5,'bold',SOFT);pdf.text(pdf.splitTextToSize(pdfSafe(k),LW-3),M,y+1,{baseline:'top'});
+        font(9.5,'normal',INK);pdf.text(vl,M+LW,y+1,{baseline:'top'});
+        y+=h;pdf.setDrawColor(...RULE);pdf.setLineWidth(0.2);pdf.line(M,y,W-M,y);
+      }
+      y+=2;
+    }
+    else if(b.type==='chart'){
+      const img=chartImageForPdf(b.data);
+      const ih=CW*PDF_CHART_H/PDF_CHART_W;
+      y+=3;need(lh(11)+ih+18);  // keep title, chart, legend and note on one page
+      write(b.title,{size:11,style:'bold',after:1.5});
+      if(img){pdf.addImage(img,'PNG',M,y,CW,ih,undefined,'FAST');y+=ih+2;}
+      else write('Grafen kunne ikke tegnes i denne nettleseren. Tallene over gjelder fortsatt.',{size:9.5,style:'italic',color:SOFT});
+      let x=M;font(8.5,'normal',SOFT);
+      for(const it of b.legend){
+        const label=pdfSafe(it.label);
+        if(it.fill){pdf.setFillColor(...pdfColor(it.fill));pdf.rect(x,y+0.4,6,2.6,'F');}
+        else{pdf.setDrawColor(...pdfColor(it.line));pdf.setLineWidth(0.7);if(it.dashed)pdf.setLineDashPattern([1.2,0.9],0);
+          pdf.line(x,y+1.7,x+6,y+1.7);pdf.setLineDashPattern([],0);}
+        pdf.text(label,x+8,y,{baseline:'top'});x+=8+pdf.getTextWidth(label)+6;
+      }
+      y+=6;write(b.note,{size:8,color:MUTED});
+    }
+  }
+
+  // Footer on every page
+  const n=pdf.getNumberOfPages();
+  for(let i=1;i<=n;i++){
+    pdf.setPage(i);pdf.setDrawColor(...RULE);pdf.setLineWidth(0.3);pdf.line(M,H-13,W-M,H-13);
+    font(7.5,'normal',MUTED);pdf.text(pdfSafe(PDF_FOOTER),M,H-11,{baseline:'top'});
+    pdf.text(`Side ${i} av ${n}`,W-M,H-11,{baseline:'top',align:'right'});
+  }
+  return pdf;
+}
+
+function downloadPdf(btn,specFn,label){
+  if(btn){btn.disabled=true;btn.textContent='⏳ Genererer…';}
+  let failed=false;
+  try{
+    if(!window.jspdf)throw new Error('jsPDF er ikke lastet');
+    const spec=specFn();
+    if(!spec)throw new Error('Ingen anbefaling å lage PDF av ennå');
+    renderPdf(spec).save(spec.filename);
+  }catch(e){
+    console.error('PDF',e);failed=true;
+    if(btn)btn.textContent='⚠️ Kunne ikke lage PDF — prøv igjen';
+  }finally{
+    if(btn)setTimeout(()=>{btn.disabled=false;btn.textContent=label;},failed?3000:0);
+  }
+}
+function downloadLandingPDF(btn){downloadPdf(btn,landingPdfSpec,PDF_LANDING_LABEL);}
+function downloadAdvisoryPDF(btn){downloadPdf(btn,advisoryPdfSpec,PDF_ADV_LABEL);}
 
 // Init landing
 setTimeout(()=>initLanding(),200);
@@ -1625,13 +1797,28 @@ function setAdvQuick(opts){
 const ADV_PREFILLED_SKIP=[1,2,3,5,6,7];
 const CHANGE_ANSWERS_LABEL='Endre svarene mine';
 
-function summariseLandingAnswers(){
+const COMFORT_TEXT={C:'selge alt',S:'selge noe',N:'holde på og vente',A:'kjøpe mer'};
+function bufferText(months){
+  return months>=BUFFER_TARGET_MONTHS?`${BUFFER_TARGET_MONTHS} måneder eller mer`:months>=BUFFER_MIN_MONTHS?`${BUFFER_MIN_MONTHS}–${BUFFER_TARGET_MONTHS} måneder`:'under 1 måned';
+}
+function amountText(monthly,lumpSum){
+  return [monthly>0?`${fmt(monthly)}/mnd`:'',lumpSum>0?`${fmt(lumpSum)} engangsbeløp`:''].filter(Boolean).join(' + ')||'ikke oppgitt';
+}
+function pctText(frac,digits=1){return `${(frac*100).toLocaleString('nb-NO',{maximumFractionDigits:digits})}%`;}
+// The answers the landing flow collected — shown in the advisory summary and in both PDFs
+function landingAnswerRows(){
   const c=collectedState;
-  const amount=[c.monthly>0?`${fmt(c.monthly)}/mnd`:'',c.lumpSum>0?`${fmt(c.lumpSum)} engangsbeløp`:''].filter(Boolean).join(' + ')||'ikke oppgitt';
-  const buffer=c.bufferMonths>=BUFFER_TARGET_MONTHS?`${BUFFER_TARGET_MONTHS} måneder eller mer`:c.bufferMonths>=BUFFER_MIN_MONTHS?`${BUFFER_MIN_MONTHS}–${BUFFER_TARGET_MONTHS} måneder`:'under 1 måned';
-  const debt=c.hasDebt?`ja, ca. ${(c.mortgageRate*100).toLocaleString('nb-NO',{maximumFractionDigits:1})}% rente`:'nei';
-  const COMFORT={C:'selge alt',S:'selge noe',N:'holde på og vente',A:'kjøpe mer'};
-  return `<ul><li><strong>Beløp:</strong> ${amount}</li><li><strong>Buffer:</strong> ${buffer}</li><li><strong>Boliglån:</strong> ${debt}</li><li><strong>Tidshorisont:</strong> ${c.horizon} år</li><li><strong>Risikovilje:</strong> ${c.riskWillingness}</li><li><strong>Ved 20% fall:</strong> ${COMFORT[c.riskComfort]||'holde på og vente'}</li></ul>`;
+  return [
+    ['Beløp',amountText(c.monthly,c.lumpSum)],
+    ['Buffer',bufferText(c.bufferMonths)],
+    ['Boliglån',c.hasDebt?`ja, ca. ${pctText(c.mortgageRate)} rente`:'nei'],
+    ['Tidshorisont',`${c.horizon} år`],
+    ['Risikovilje',c.riskWillingness],
+    ['Ved 20% fall',COMFORT_TEXT[c.riskComfort]||COMFORT_TEXT.N],
+  ];
+}
+function summariseLandingAnswers(){
+  return `<ul>${landingAnswerRows().map(([k,v])=>`<li><strong>${k}:</strong> ${v}</li>`).join('')}</ul>`;
 }
 
 // forceFull: ask every question even if the landing flow was completed ("Endre svarene mine")
@@ -1783,6 +1970,7 @@ function deliverAdvRec(){
   }
   const bufNote = bufferAdvisoryNote(cap.bufferFlag, collectedState.monthly);
   const intro = isBufferFirst(bKey, Math.round(pAlloc*100)) ? BUFFER_FIRST_INTRO : `${title} ${horizNote}`;
+  const advIntroHTML = `${intro}${debtNote}`;
   advAddBubble(`${intro}${debtNote}<br><br>${buildRecHTML(engKey,hKey,bKey,collectedState.riskComfort,bufNote,'',Math.round(pAlloc*100),collectedState.expenses/12)}`, 'ai');
   // Trigger MC chart render in the results panel
   renderResults({
@@ -1794,6 +1982,11 @@ function deliverAdvRec(){
     costS:0.007,costB:0.003,
     riskLabel:ar,skipBanner:false
   });
+  lastResults.introHTML=advIntroHTML;
+  lastResults.source='ai';
+  setTimeout(()=>{
+    advAddBubble(`Vil du ta vare på analysen? Den inneholder anbefalingen, forutsetningene og grafen.<br><br><button class="pdf-btn" onclick="downloadAdvisoryPDF(this)">${PDF_ADV_LABEL}</button>`,'ai');
+  },600);
 }
 
 </script>
