@@ -43,12 +43,14 @@ function loadApp() {
   };
   // Run timers synchronously so a chat turn completes within one call
   const setTimeout = fn => fn();
-  class Chart { destroy() {} }
+  // Records every chart config so tests can inspect the drawn datasets
+  const charts = [];
+  class Chart { constructor(ctx, cfg) { charts.push(cfg); } destroy() {} }
 
   const exportsSrc = `
     return {
       normaliseNumber, interpretInput, hBucket, LANDING_QUESTIONS,
-      landingSend, advSend, chooseMode,
+      landingSend, advSend, chooseMode, renderLandingChart, renderResults,
       get collectedState() { return collectedState; },
       get landingStep() { return landingStep; },
       get advStep() { return advStep; },
@@ -59,6 +61,7 @@ function loadApp() {
   const bubbles = id => els[id] ? els[id].children : [];
   // Object.create keeps the live getters (spreading would snapshot them)
   return Object.assign(Object.create(app), {
+    charts,
     el: id => document.getElementById(id),
     landingBubbles: () => bubbles('landingMsgs'),
     advBubbles: () => bubbles('advChatHistory'),

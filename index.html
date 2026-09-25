@@ -497,7 +497,7 @@ input[type=number]:focus{border-color:var(--teal);}
             <div class="alloc-strip" id="allocStrip"></div>
             <div style="display:flex;gap:12px;margin-top:5px;font-size:0.7rem;color:var(--ink-muted);">
               <span style="color:#2a7f7f">■ <span id="allocS"></span> Aksjer</span>
-              <span style="color:#c9a84c">■ <span id="allocB"></span> Obligasjoner</span>
+              <span id="allocBLegend" style="color:#c9a84c">■ <span id="allocB"></span> <span id="allocBLabel">Obligasjoner</span></span>
             </div>
           </div>
         </div>
@@ -510,7 +510,7 @@ input[type=number]:focus{border-color:var(--teal);}
           <div class="chart-title">Simulert porteføljeutvikling — 1 000 scenarioer</div>
           <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
           <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:0.7rem;color:var(--ink-muted);">
-            <span>━ Forventet</span><span>▓ 90% bånd</span><span>╌ Bankkonto</span>
+            <span>━ Forventet</span><span>▓ 90% bånd</span><span id="legendBank">╌ Bankkonto</span>
           </div>
         </div>
         <div class="result-disclaimer" id="capNote"></div>
@@ -546,19 +546,19 @@ const ALLOC_TABLE=[
 function hBucket(y){if(y<1)return 0;if(y<3)return 1;if(y<6)return 2;if(y<10)return 3;if(y<15)return 4;return 5;}
 
 // ── CAPACITY LOGIC — aligned with long-term index fund philosophy ──
-// Only genuine risk factors cause a step-down:
-//   • Buffer < 1 month: -1 level (serious financial vulnerability)
-//   • Horizon 3–7 yr: -1 level via hBucket (already handled in ALLOC_TABLE)
-//   • Risk-averse behaviour (C): -1 level via riskMap
+// Only genuine risk factors lower the equity share:
+//   • Short horizon: via hBucket rows in ALLOC_TABLE
+//   • Risk-averse behaviour (C/S): -2/-1 columns
 // Savings rate no longer caps equity — it's not the right signal for index investors.
-// Buffer 1–2 months: no step-down, but we set a flag for an advisory note.
+// Buffer does not step the allocation down. Instead:
+//   • Buffer < 1 month ('critical'): "bygg buffer først" — høyrentekonto until the buffer
+//     is at least 1 month of expenses, then the allocation shown (see buildRecHTML)
+//   • Buffer 1–3 months ('low'): invest, with a note to build the buffer to 3 months
+const BUFFER_MIN_MONTHS=1, BUFFER_TARGET_MONTHS=3;
 function capacityFromInputs(income, expenses, bufferMonths){
-  // Only buffer < 1 month causes a hard step-down
-  const bufferPenalty = bufferMonths < 1 ? 1 : 0;
-  // bufferFlag for advisory note (1–2 months → suggest building buffer)
-  const bufferFlag = bufferMonths >= 1 && bufferMonths < 3 ? 'low' : bufferMonths < 1 ? 'critical' : 'ok';
-  // cappedLevel: without savings-rate cap, this is always max (5) minus buffer penalty
-  const cappedLevel = Math.max(0, 5 - bufferPenalty);
+  const bufferFlag = bufferMonths < BUFFER_MIN_MONTHS ? 'critical' : bufferMonths < BUFFER_TARGET_MONTHS ? 'low' : 'ok';
+  // cappedLevel: no savings-rate or buffer cap, so always the max column (5)
+  const cappedLevel = 5;
   const displayLevel = Math.min(4, cappedLevel);
   const displayLabels = ["Ingen","Lav","Middels","God","Høy"];
   return {
@@ -585,7 +585,7 @@ function bufferAdvisoryNote(bufferFlag, monthly){
   }
   if(bufferFlag==='low'){
     const extra = monthly>0 ? ` Vurder å sette av ${fmt(Math.round(monthly*0.3))} av sparingen til buffer til du har 3 måneder.` : ' Prøv å bygge bufferen til 3 måneder utgifter parallelt med sparingen.';
-    return `<div class="buffer-note">💡 <strong>Buffertips:</strong> Du har 1–2 måneder buffer — det er OK å starte, men vi anbefaler å bygge den opp til 3 måneder.${extra}</div>`;
+    return `<div class="buffer-note">💡 <strong>Buffertips:</strong> Du har 1–3 måneder buffer — det er OK å starte, men vi anbefaler å bygge den opp til 3 måneder.${extra}</div>`;
   }
   return '';
 }
@@ -755,8 +755,10 @@ function renderResults(params){
   const ar=applyCapacity(riskLabel,cap);
   const alloc=ALLOC_TABLE[hBucket(horizon)][RISK_SCORE[ar]??3];
   const pAlloc=alloc==="Bank"?0:alloc;
-  const profile=alloc==="Bank"?{name:"Bankkonto",stocks:0,bonds:0,color:"#7a9e7a"}:profForAlloc(pAlloc);
-  const cf=pAlloc*costS+(1-pAlloc)*costB;
+  // 0% aksjer (numeric 0 or "Bank") is recommended as høyrentekonto — show and chart it as bank, not bonds
+  const isBank=pAlloc===0;
+  const profile=isBank?{name:"Bankkonto",stocks:0,bonds:0,color:"#7a9e7a"}:profForAlloc(pAlloc);
+  const cf=isBank?0:pAlloc*costS+(1-pAlloc)*costB;  // no fund fees on a bank account
   const data=MC[profile.name==="Bankkonto"?"Bankkonto":profile.name]||MC["Forsiktig"];
   const sv=monthly*12;
   const p50=[],p5=[],p95=[],cash=[];
@@ -785,15 +787,12 @@ function renderResults(params){
     p95.push(sc95+sav95);
     cash.push(scCash+savCash);
   }
-  // Banner
+  // Banner — no buffer: the chart shows the allocation for after the buffer is built
   if(!skipBanner){
     const banner=document.getElementById('riskBanner');
-    if(ar!==riskLabel){
+    if(cap.bufferFlag==='critical'&&pAlloc>0){
       banner.className='alert warn';
-      banner.innerHTML=`<span class="alert-icon">⚠️</span><div><strong>Risiko justert ned til ${ar}</strong> — din evne til å tåle svingninger (${cap.label}) tillater ikke høyere risiko enn dette.${startCapital>100000?` Med ${fmt(startCapital)} i engangsinvestering er dette særlig viktig.`:''}</div>`;
-    } else if((RISK_SCORE[riskLabel]??0)>cap.cappedLevel){
-      banner.className='alert info';
-      banner.innerHTML=`<span class="alert-icon">ℹ️</span><div>Valgt risikovilje er i øvre sjikt av din kapasitet (${cap.label}). Sørg for tilstrekkelig likviditetsbuffer.${startCapital>300000?` Engangsinvestering på ${fmt(startCapital)} øker eksponeringen betraktelig.`:''}</div>`;
+      banner.innerHTML=`<span class="alert-icon">⚠️</span><div><strong>Bygg buffer først.</strong> Sett sparingen i en høyrentekonto til du har minst én måneds utgifter${expenses>0?` (ca. ${fmt(expenses/12)})`:''} i buffer, før du begynner å investere. Grafen viser anbefalingen for når bufferen er på plass.</div>`;
     } else {
       banner.className='hidden';
     }
@@ -803,8 +802,12 @@ function renderResults(params){
   document.getElementById('resultsContent').classList.remove('hidden');
   document.getElementById('profileDot').style.background=profile.color;
   document.getElementById('profileName').textContent=profile.name;
-  document.getElementById('profileSub').textContent=`${Math.round(pAlloc*100)}% aksjer · ${Math.round((1-pAlloc)*100)}% obligasjoner`;
-  document.getElementById('allocStrip').innerHTML=`<div style="flex:${Math.max(pAlloc,0.001)};background:${profile.color}"></div><div style="flex:${Math.max(1-pAlloc,0.001)};background:#c9a84c"></div>`;
+  const restLabel=isBank?'bankinnskudd':'obligasjoner';
+  const restColor=isBank?profile.color:'#c9a84c';
+  document.getElementById('profileSub').textContent=`${Math.round(pAlloc*100)}% aksjer · ${Math.round((1-pAlloc)*100)}% ${restLabel}`;
+  document.getElementById('allocStrip').innerHTML=`<div style="flex:${Math.max(pAlloc,0.001)};background:${profile.color}"></div><div style="flex:${Math.max(1-pAlloc,0.001)};background:${restColor}"></div>`;
+  document.getElementById('allocBLegend').style.color=restColor;
+  document.getElementById('allocBLabel').textContent=restLabel.charAt(0).toUpperCase()+restLabel.slice(1);
   document.getElementById('allocS').textContent=`${Math.round(pAlloc*100)}%`;
   document.getElementById('allocB').textContent=`${Math.round((1-pAlloc)*100)}%`;
   document.getElementById('yrLabel').textContent=`${horizon} år`;
@@ -813,13 +816,15 @@ function renderResults(params){
   document.getElementById('optimVal').textContent=fmt(p95[horizon-1]);
   const capTexts=["Disponibel inntekt er svært begrenset. Bygg en buffer før du investerer.","Evnen til å tåle svingninger er lav. Den investerte kapitalen spiller en viktig rolle for din økonomi.","Evnen til å tåle svingninger er middels — et moderat tap vil ikke ramme deg hardt.","God evne til å tåle svingninger. Selv store markedsfall vil ikke ha markant innvirkning på din levestandard.","Høy evne til å tåle svingninger. Din finansielle situasjon er svært robust."];
   document.getElementById('capNote').textContent=capTexts[Math.min(cap.displayLevel,4)];
+  document.getElementById('legendBank').classList.toggle('hidden',isBank);
   if(chartInst)chartInst.destroy();
   const labels=Array.from({length:horizon},(_,i)=>`År ${i+1}`);
   chartInst=new Chart(document.getElementById('mainChart').getContext('2d'),{type:'line',data:{labels,datasets:[
     {data:p95,borderColor:'transparent',backgroundColor:'rgba(42,127,127,0.12)',fill:'+1',pointRadius:0,tension:0.4,label:'95%'},
     {data:p50,borderColor:profile.color,backgroundColor:'transparent',borderWidth:2.5,pointRadius:0,tension:0.4,fill:false,label:'Forventet'},
     {data:p5,borderColor:'transparent',backgroundColor:'rgba(42,127,127,0.12)',fill:'-1',pointRadius:0,tension:0.4,label:'5%'},
-    {data:cash,borderColor:'#aaa',borderDash:[5,4],backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0.4,fill:false,label:'Bankkonto'},
+    // Dashed bank comparison — skipped when the recommendation itself is bank (it would overlap the main line)
+    ...(isBank?[]:[{data:cash,borderColor:'#aaa',borderDash:[5,4],backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0.4,fill:false,label:'Bankkonto'}]),
   ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.parsed.y)}`}}},scales:{x:{ticks:{maxTicksLimit:10,font:{family:'DM Sans',size:11},color:'#7a7a9a'},grid:{color:'#f0ece3'}},y:{ticks:{font:{family:'DM Sans',size:11},color:'#7a7a9a',callback:v=>fmt(v)},grid:{color:'#f0ece3'}}}}});
 
   // Inject rec-box into results panel (for manual mode, or any caller that sets showRecBox)
@@ -827,10 +832,10 @@ function renderResults(params){
   if(recBoxEl && params.showRecBox){
     const engKey = allocToEngKey(pAlloc);
     const hKey   = hKeyFromYears(horizon);
-    const bKey   = bufKey(params.bufferMonths||3);
+    const bKey   = bufKey(bufferMonths);  // not `||3`: 0 months must stay 0
     const rChar  = params.riskComfort||'N';
     const bufNote= bufferAdvisoryNote(cap.bufferFlag, params.monthly||0);
-    recBoxEl.innerHTML = buildRecHTML(engKey, hKey, bKey, rChar, bufNote, '', Math.round(pAlloc*100));
+    recBoxEl.innerHTML = buildRecHTML(engKey, hKey, bKey, rChar, bufNote, '', Math.round(pAlloc*100), expenses/12);
   } else if(recBoxEl){
     recBoxEl.innerHTML = '';
   }
@@ -893,7 +898,7 @@ function injectFundDisclaimer(el){
 // Landing growth chart
 let landingChartInst=null;
 function renderLandingChart(p){
-  const {lumpSum=0,monthly=0,years=15,mortgageRate=0.03,debtLabel='lån',stockFraction=1.0,includeInvest=true,includeMortgage=false}=p;
+  const {lumpSum=0,monthly=0,years=15,mortgageRate=0.03,debtLabel='lån',stockFraction=1.0,includeInvest=true,includeMortgage=false,bufferFirst=false}=p;
   const wrap=document.getElementById('landingChartWrap');
   wrap.classList.remove('hidden');
   // Expected returns: stocks 7% (gross, cost-adjusted via MC elsewhere; here flat 7%)
@@ -903,9 +908,10 @@ function renderLandingChart(p){
   const TAX=0.22;
   const CASH_NET = CASH_NOMINAL * (1 - TAX);                // 1.95%
   const MORTGAGE_NET = mortgageRate * (1 - TAX);             // e.g. 3% → 2.34%
+  const BOND_NET = BOND_R * (1 - TAX);                       // 3.12% — bond funds can't be held in ASK
   const nonStock=1-stockFraction;
-  // Non-stock portion: half bonds (not taxed here as ASK-held), half cash (taxed)
-  const INVEST_RETURN = stockFraction*STOCK_R + nonStock*0.5*BOND_R + nonStock*0.5*CASH_NET;
+  // Non-stock portion: half bonds, half cash — both taxed 22% (interest income outside ASK)
+  const INVEST_RETURN = stockFraction*STOCK_R + nonStock*0.5*BOND_NET + nonStock*0.5*CASH_NET;
   const SAVINGS_RETURN = CASH_NET;
   const labels=[],investSeries=[],mortgageSeries=[],savingsSeries=[];
   for(let yr=1;yr<=years;yr++){
@@ -935,10 +941,11 @@ function renderLandingChart(p){
   } else {
     noteExtra = ` Bankkonto er vist netto etter 22% skatt på renter (${(CASH_NET*100).toFixed(2)}%).`;
   }
+  if(bufferFirst&&includeInvest) noteExtra += ' Investeringen gjelder først når bufferen er bygget opp.';
   wrap.innerHTML=`<div class="landing-chart-card">
     <div class="chart-header"><span class="chart-headline">${headline}</span><div class="chart-legend">${legendItems}</div></div>
     <div class="chart-canvas-wrap"><canvas id="landingChart"></canvas></div>
-    <div class="chart-note">Illustrerende beregning — investering basert på ${returnLabel} etter kostnader.${noteExtra}</div>
+    <div class="chart-note">Illustrerende beregning${includeInvest?` — investering basert på ${returnLabel} etter kostnader${nonStock>0?', der rentedelen er vist netto etter 22% skatt':''}`:''}.${noteExtra}</div>
   </div>`;
   if(landingChartInst)landingChartInst.destroy();
   landingChartInst=new Chart(document.getElementById('landingChart').getContext('2d'),{
@@ -968,11 +975,28 @@ function bufKey(m){if(m<1)return'L';if(m<3)return'M';return'H';}
 // risk behaviour from MC Q1 score (1=cautious,2=neutral,3-4=aggressive)
 function riskChar(score){if(score<=1)return'C';if(score<=2)return'N';return'A';}
 
-function buildRecHTML(engKey, hKey, bKey, rChar, bufferNoteHTML, horizNote, pAllocPct){
+// bKey 'L' (buffer < 1 month) with any equity → two-stage "bygg buffer først" recommendation.
+// monthlyExpenses (optional, kr) turns the buffer target into an amount.
+function isBufferFirst(bKey, pAllocPct){return bKey==='L'&&pAllocPct>0;}
+const BUFFER_FIRST_INTRO='Du har nesten ingen buffer i dag, så det første steget er å bygge en buffer i en høyrentekonto. <strong>Først når bufferen er på plass, anbefaler jeg å begynne å investere</strong> — slik som vist under.';
+function buildRecHTML(engKey, hKey, bKey, rChar, bufferNoteHTML, horizNote, pAllocPct, monthlyExpenses){
   const allocLine = pAllocPct!==undefined
     ? `${pAllocPct}% aksjer · ${ENG.products[engKey]}`
     : ENG.products[engKey];
   const disclaimer = `<div class="fund-disclaimer">⚠️ <strong>Merk:</strong> Produktene og plattformene nevnt ovenfor er illustrative eksempler — ikke en anbefaling om å velge én fremfor en annen. Kombinasjonsfond er ofte aktivt forvaltet — se etter lav forvaltningsavgift (helst under 0,5%) og vurder passivt forvaltede alternativer. Gjør egne undersøkelser eller kontakt din bank.</div>`;
+  if(isBufferFirst(bKey, pAllocPct)){
+    const minAmt = monthlyExpenses>0 ? ` (ca. ${fmt(monthlyExpenses*BUFFER_MIN_MONTHS)})` : '';
+    const targetAmt = monthlyExpenses>0 ? ` (ca. ${fmt(monthlyExpenses*BUFFER_TARGET_MONTHS)})` : '';
+    return `<div class="rec-box buffer-first">
+<div class="rec-title">💡 Min anbefaling: bygg buffer først</div>
+<div class="alloc-line"><strong>Nå:</strong> 100% høyrentekonto — til du har minst én måneds utgifter${minAmt} i buffer</div>
+<div class="alloc-line"><strong>Deretter:</strong> ${allocLine}</div>
+<div class="next-step">📋 <strong>Slik kommer du i gang:</strong><br>
+<strong>1. Bygg bufferen før du investerer.</strong> Opprett en høyrentekonto og sett all sparing dit til bufferen er på minst én måneds utgifter${minAmt}. Ikke begynn å investere før dette er på plass — uten buffer kan en uventet utgift tvinge deg til å selge investeringene når markedet er nede.<br>
+<strong>2. Begynn å investere.</strong> Når bufferen er på plass: ${ENG.nextSteps[engKey]} Bygg samtidig bufferen videre til ${BUFFER_TARGET_MONTHS} måneders utgifter${targetAmt}.</div>
+<div class="flip-note">📚 <button class="info-link" onclick="openInfoDrawer()">Mer informasjon om fondssparing her</button></div>
+</div>${disclaimer}`;
+  }
   return `<div class="rec-box">
 <div class="rec-title">💡 Min anbefaling</div>
 <div class="alloc-line">${allocLine}</div>
@@ -1225,7 +1249,9 @@ function deliverLandingRec(){
   }
 
   const bufNote = bufferAdvisoryNote(cap.bufferFlag, collectedState.monthly);
-  const recHTML=`${title} ${horizNote}${debtNote}<br><br>${buildRecHTML(engKey,hKey,bKey,collectedState.riskComfort,bufNote,'',Math.round(pAlloc*100))}`;
+  const bufferFirst = isBufferFirst(bKey, Math.round(pAlloc*100));
+  const intro = bufferFirst ? BUFFER_FIRST_INTRO : `${title} ${horizNote}`;
+  const recHTML=`${intro}${debtNote}<br><br>${buildRecHTML(engKey,hKey,bKey,collectedState.riskComfort,bufNote,'',Math.round(pAlloc*100),collectedState.expenses/12)}`;
   landingAddBubble(recHTML,'ai');
 
   // Render chart with allocation-adjusted expected return
@@ -1236,8 +1262,9 @@ function deliverLandingRec(){
     mortgageRate:collectedState.mortgageRate,
     debtLabel:collectedState.debtLabel||'lån',
     stockFraction:pAlloc,
-    includeInvest:pAlloc>0||collectedState.lumpSum>0||collectedState.monthly>0,
-    includeMortgage:collectedState.hasDebt
+    includeInvest:pAlloc>0,  // 0% aksjer = høyrentekonto; the Bankkonto line is the recommendation
+    includeMortgage:collectedState.hasDebt,
+    bufferFirst
   });
 
   // Show deeper analysis button
@@ -1408,9 +1435,10 @@ function interpretInput(text,step){
 
 function triggerDeeper(){
   goScreen('advisory');
-  // If mode not chosen yet, auto-choose AI
+  // AI mode picks up the landing answers (initAdvChat); manual mode gets them copied into the form
   if(!advMode) chooseMode('ai');
-  else if(advMode==='manual') prefillManualFromState();
+  else if(advMode==='ai'&&!advPrefilled) initAdvChat();  // an already-prefilled chat is kept as is
+  else prefillManualFromState();
 }
 
 async function downloadLandingPDF(btn){
@@ -1448,8 +1476,8 @@ async function downloadLandingPDF(btn){
     const clone=recBox.cloneNode(true);
     clone.querySelectorAll('button').forEach(b=>b.remove());
     html+=`<div style="background:#d4eeee;border:1px solid #a0d0d0;border-radius:10px;padding:14px 16px;margin-bottom:12px;">
-      <div style="font-weight:600;color:#2a7f7f;font-size:14px;margin-bottom:6px;">💡 Min anbefaling</div>
-      <div style="font-size:13px;color:#3d3d5c;margin:4px 0;">${clone.querySelector('.alloc-line')?clone.querySelector('.alloc-line').innerHTML:''}</div>
+      <div style="font-weight:600;color:#2a7f7f;font-size:14px;margin-bottom:6px;">${clone.querySelector('.rec-title')?clone.querySelector('.rec-title').innerHTML:'💡 Min anbefaling'}</div>
+      ${[...clone.querySelectorAll('.alloc-line')].map(l=>`<div style="font-size:13px;color:#3d3d5c;margin:4px 0;">${l.innerHTML}</div>`).join('')}
       <div style="font-size:12px;color:#3d3d5c;background:#f8f6f1;border-radius:7px;padding:8px 10px;margin-top:8px;line-height:1.5;">${clone.querySelector('.next-step')?clone.querySelector('.next-step').innerHTML:''}</div>
     </div>`;
   }
@@ -1508,6 +1536,7 @@ setTimeout(()=>initLanding(),200);
 let advStep=0;
 let advLocked=false;
 let advAskedDebtRate=false;
+let advPrefilled=false;  // true when the chat reuses the landing-page answers
 
 const ADV_QUESTIONS=[
   // Step 0: suitability
@@ -1587,13 +1616,35 @@ function setAdvQuick(opts){
   });
 }
 
-function initAdvChat(){
-  advStep=0;advAskedDebtRate=false;
+// Steps already answered on the landing page (amount, buffer, debt, horizon, risk, behaviour)
+const ADV_PREFILLED_SKIP=[1,2,3,5,6,7];
+const CHANGE_ANSWERS_LABEL='Endre svarene mine';
+
+function summariseLandingAnswers(){
+  const c=collectedState;
+  const amount=[c.monthly>0?`${fmt(c.monthly)}/mnd`:'',c.lumpSum>0?`${fmt(c.lumpSum)} engangsbeløp`:''].filter(Boolean).join(' + ')||'ikke oppgitt';
+  const buffer=c.bufferMonths>=BUFFER_TARGET_MONTHS?`${BUFFER_TARGET_MONTHS} måneder eller mer`:c.bufferMonths>=BUFFER_MIN_MONTHS?`${BUFFER_MIN_MONTHS}–${BUFFER_TARGET_MONTHS} måneder`:'under 1 måned';
+  const debt=c.hasDebt?`ja, ca. ${(c.mortgageRate*100).toLocaleString('nb-NO',{maximumFractionDigits:1})}% rente`:'nei';
+  const COMFORT={C:'selge alt',S:'selge noe',N:'holde på og vente',A:'kjøpe mer'};
+  return `<ul><li><strong>Beløp:</strong> ${amount}</li><li><strong>Buffer:</strong> ${buffer}</li><li><strong>Boliglån:</strong> ${debt}</li><li><strong>Tidshorisont:</strong> ${c.horizon} år</li><li><strong>Risikovilje:</strong> ${c.riskWillingness}</li><li><strong>Ved 20% fall:</strong> ${COMFORT[c.riskComfort]||'holde på og vente'}</li></ul>`;
+}
+
+// forceFull: ask every question even if the landing flow was completed ("Endre svarene mine")
+function initAdvChat(forceFull){
+  advPrefilled=!forceFull&&landingStep>=LANDING_QUESTIONS.length;
+  advStep=0;advLocked=false;
+  advAskedDebtRate=advPrefilled;  // the rate was already asked on the landing page
   document.getElementById('advChatHistory').innerHTML='';
   document.getElementById('advQuickRow').innerHTML='';
   setTimeout(()=>{
-    advAddBubble(ADV_QUESTIONS[0].ask,'ai');
-    setAdvQuick(ADV_QUESTIONS[0].quick);
+    if(advPrefilled){
+      advAddBubble(`Hei! 📊 Jeg har tatt med svarene dine fra forsiden, så du slipper å svare på dem igjen:${summariseLandingAnswers()}Da trenger jeg bare to ting til: erfaringen din, og inntekt og utgifter. Vil du endre noe over, trykk «${CHANGE_ANSWERS_LABEL}».`,'ai');
+      advAddBubble(ADV_QUESTIONS[0].ask.split('<br><br>').pop(),'ai');
+      setAdvQuick([...ADV_QUESTIONS[0].quick,CHANGE_ANSWERS_LABEL]);
+    }else{
+      advAddBubble(ADV_QUESTIONS[0].ask,'ai');
+      setAdvQuick(ADV_QUESTIONS[0].quick);
+    }
   },300);
 }
 
@@ -1611,6 +1662,12 @@ function advSend(){
       advAddBubble('Analysen er ferdig — se grafen og anbefalingen i resultatpanelet. Bytt til <strong>Manuell</strong> for å justere tallene, eller trykk <strong>↺ Nullstill</strong> for å starte på nytt.','ai');
       advLocked=false;
     },400);
+    return;
+  }
+
+  // ── CHANGE LANDING ANSWERS — restart with every question ──
+  if(advPrefilled&&text===CHANGE_ANSWERS_LABEL){
+    setTimeout(()=>initAdvChat(true),300);
     return;
   }
 
@@ -1661,12 +1718,14 @@ function advSend(){
     if(q&&q.parse)q.parse(text);
   }
 
+  const finishedStep=advStep;
   advStep++;
+  if(advPrefilled) while(ADV_PREFILLED_SKIP.includes(advStep)) advStep++;
   const extraDelay=fi.type==='fallback'?400:0;
 
   setTimeout(()=>{
     // After step 0 (suitability): show beginner info box if user is a nybegynner
-    if(advStep===1&&collectedState.suitability==='beginner'){
+    if(finishedStep===0&&collectedState.suitability==='beginner'){
       advAddBubble(`<div class="info-box-inline"><strong style="color:var(--teal);">📚 Godt å vite før du starter:</strong><ul><li><strong>Verdipapirer</strong> er aksjer og obligasjoner. En aksje kan gi høy avkastning — men også store tap. En obligasjon er tryggere, men gir lavere avkastning.</li><li><strong>Risiko</strong> betyr svingninger. Lang tidshorisont reduserer risikoen betraktelig.</li><li><strong>Kostnader</strong> trekkes automatisk fra avkastningen. 0,5% kan over 20 år utgjøre hundretusener i tapt verdi.</li></ul></div>`,'ai');
       setTimeout(()=>{
         advAddBubble(ADV_QUESTIONS[advStep].ask,'ai');
@@ -1718,13 +1777,14 @@ function deliverAdvRec(){
     debtNote=`<br><strong>Merk om gjeld:</strong> Med en rente på ${(collectedState.mortgageRate*100).toFixed(0)}% er det sannsynlig at nedbetaling av gjeld gir bedre netto avkastning enn investering. Vurder å prioritere gjelden.`;
   }
   const bufNote = bufferAdvisoryNote(cap.bufferFlag, collectedState.monthly);
-  advAddBubble(`${title} ${horizNote}${debtNote}<br><br>${buildRecHTML(engKey,hKey,bKey,collectedState.riskComfort,bufNote,'',Math.round(pAlloc*100))}`, 'ai');
+  const intro = isBufferFirst(bKey, Math.round(pAlloc*100)) ? BUFFER_FIRST_INTRO : `${title} ${horizNote}`;
+  advAddBubble(`${intro}${debtNote}<br><br>${buildRecHTML(engKey,hKey,bKey,collectedState.riskComfort,bufNote,'',Math.round(pAlloc*100),collectedState.expenses/12)}`, 'ai');
   // Trigger MC chart render in the results panel
   renderResults({
     startCapital:collectedState.lumpSum||0,
     monthly:collectedState.monthly||0,
     horizon:collectedState.horizon,
-    income:inc,expenses:exp,
+    income:inc,expenses:collectedState.expenses||0,  // real expenses only — used for the buffer amount
     bufferMonths:collectedState.bufferMonths,
     costS:0.007,costB:0.003,
     riskLabel:ar,skipBanner:false
