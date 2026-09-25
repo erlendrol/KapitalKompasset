@@ -326,7 +326,7 @@ renderLandingChart({
   mortgageRate,     // nominal rate
   debtLabel,        // 'boliglån'|'lån' — used in legend
   stockFraction,    // 0.0–1.0 — drives blended expected return
-  includeInvest,    // boolean
+  includeInvest,    // boolean — false when the recommendation is 0% aksjer (høyrentekonto); only the Bankkonto line is drawn
   includeMortgage   // boolean
 })
 ```
@@ -335,9 +335,10 @@ renderLandingChart({
 - Stocks: 7.0% (unchanged — ASK defers capital gains tax)
 - Bank: 2.5% nominal × (1 − 0.22) = **1.95% net**
 - Mortgage: `mortgageRate × (1 − 0.22)` = net effective return from paying down
-- Blended invest return: `stockFraction×7% + nonStock×0.5×4% + nonStock×0.5×1.95%`
+- Bonds: 4% × (1 − 0.22) = **3.12% net** — bond funds can't be held in ASK, so interest is taxed
+- Blended invest return: `stockFraction×7% + nonStock×0.5×3.12% + nonStock×0.5×1.95%`
 
-Chart note states: "basert på X% forventet årlig avkastning etter kostnader. Bankkonto og nedbetaling av lån er vist netto etter 22% skatt..."
+Chart note states: "basert på X% forventet årlig avkastning etter kostnader, der rentedelen er vist netto etter 22% skatt. Bankkonto og nedbetaling av lån er vist netto etter 22% skatt..." (the investment part is omitted when `includeInvest` is false).
 
 ---
 

@@ -903,9 +903,10 @@ function renderLandingChart(p){
   const TAX=0.22;
   const CASH_NET = CASH_NOMINAL * (1 - TAX);                // 1.95%
   const MORTGAGE_NET = mortgageRate * (1 - TAX);             // e.g. 3% → 2.34%
+  const BOND_NET = BOND_R * (1 - TAX);                       // 3.12% — bond funds can't be held in ASK
   const nonStock=1-stockFraction;
-  // Non-stock portion: half bonds (not taxed here as ASK-held), half cash (taxed)
-  const INVEST_RETURN = stockFraction*STOCK_R + nonStock*0.5*BOND_R + nonStock*0.5*CASH_NET;
+  // Non-stock portion: half bonds, half cash — both taxed 22% (interest income outside ASK)
+  const INVEST_RETURN = stockFraction*STOCK_R + nonStock*0.5*BOND_NET + nonStock*0.5*CASH_NET;
   const SAVINGS_RETURN = CASH_NET;
   const labels=[],investSeries=[],mortgageSeries=[],savingsSeries=[];
   for(let yr=1;yr<=years;yr++){
@@ -938,7 +939,7 @@ function renderLandingChart(p){
   wrap.innerHTML=`<div class="landing-chart-card">
     <div class="chart-header"><span class="chart-headline">${headline}</span><div class="chart-legend">${legendItems}</div></div>
     <div class="chart-canvas-wrap"><canvas id="landingChart"></canvas></div>
-    <div class="chart-note">Illustrerende beregning — investering basert på ${returnLabel} etter kostnader.${noteExtra}</div>
+    <div class="chart-note">Illustrerende beregning${includeInvest?` — investering basert på ${returnLabel} etter kostnader${nonStock>0?', der rentedelen er vist netto etter 22% skatt':''}`:''}.${noteExtra}</div>
   </div>`;
   if(landingChartInst)landingChartInst.destroy();
   landingChartInst=new Chart(document.getElementById('landingChart').getContext('2d'),{
@@ -1236,7 +1237,7 @@ function deliverLandingRec(){
     mortgageRate:collectedState.mortgageRate,
     debtLabel:collectedState.debtLabel||'lån',
     stockFraction:pAlloc,
-    includeInvest:pAlloc>0||collectedState.lumpSum>0||collectedState.monthly>0,
+    includeInvest:pAlloc>0,  // 0% aksjer = høyrentekonto; the Bankkonto line is the recommendation
     includeMortgage:collectedState.hasDebt
   });
 

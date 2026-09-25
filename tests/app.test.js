@@ -144,3 +144,49 @@ test('advisory chat delivers exactly one recommendation', () => {
   app.sayAdv('hva nå?');
   assert.equal(recCount(app.advBubbles()), 1, 'follow-up input must not re-deliver');
 });
+
+const lastChart = app => app.charts[app.charts.length - 1];
+const datasetLabels = chart => chart.data.datasets.map(d => d.label);
+const LOW_RISK_ANSWERS = [
+  '100 000 kr engangsbeløp',
+  'Ja, godt over 3 måneder',
+  'Nei, ingen gjeld',
+  'Under 3 år',
+  'Lav — jeg vil ha stabilt og trygt',
+  'Holde på og vente',
+];
+
+test('bank recommendation (0% aksjer) draws no Investering line', () => {
+  const app = loadApp();
+  LOW_RISK_ANSWERS.forEach(a => app.sayLanding(a));
+  const rec = app.landingBubbles().find(b => b.innerHTML.includes('rec-box'));
+  assert.match(rec.innerHTML, /0% aksjer · Høyrentekonto/);
+
+  const chart = lastChart(app);
+  assert.deepEqual(datasetLabels(chart), ['Bankkonto']);
+  const note = app.el('landingChartWrap').innerHTML;
+  assert.doesNotMatch(note, /forventet årlig avkastning/);
+  assert.doesNotMatch(note, /Investering/);
+});
+
+test('equity recommendation still draws the Investering line', () => {
+  const app = loadApp();
+  LANDING_ANSWERS.forEach(a => app.sayLanding(a));
+  assert.deepEqual(datasetLabels(lastChart(app)), ['Investering', 'Bankkonto']);
+});
+
+test('bond part of the blended return is taxed 22% (bond funds are not ASK-eligible)', () => {
+  const app = loadApp();
+  const oneYear = stockFraction => {
+    app.renderLandingChart({ lumpSum: 100000, monthly: 0, years: 1, stockFraction });
+    return lastChart(app).data.datasets[0].data[0];
+  };
+  const STOCK = 0.07, BOND_NET = 0.04 * 0.78, CASH_NET = 0.025 * 0.78;
+  for (const s of [1, 0.8, 0.5, 0.2]) {
+    const r = s * STOCK + (1 - s) * 0.5 * BOND_NET + (1 - s) * 0.5 * CASH_NET;
+    assert.equal(oneYear(s), Math.round(100000 * (1 + r)), `${s * 100}% aksjer`);
+  }
+  // 50/50: 3.5% + 0.78% + 0.4875% ≈ 4.8% (was 5.0% with untaxed bonds)
+  app.renderLandingChart({ lumpSum: 100000, years: 1, stockFraction: 0.5 });
+  assert.match(app.el('landingChartWrap').innerHTML, /4\.8% forventet årlig avkastning \(50% aksjer\)/);
+});
