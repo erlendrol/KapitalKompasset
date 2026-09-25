@@ -46,14 +46,15 @@ The tool is built around a specific investment thesis:
 > **Long-term index investing is the right answer for almost everyone.** The tool should be confident about this, not hedge unnecessarily. Only genuine risk factors cause a step-down in the recommendation.
 
 Genuine step-down triggers:
-- Buffer < 1 month (hard financial vulnerability)
 - Horizon < 3 years (money may be needed soon)
 - Risk-averse behaviour: "selge noe" = −1 column, "selge alt" = −2 columns
 
 Things that do NOT step down:
 - "Hold still" behaviour (rational long-term behaviour = full allocation)
 - Low savings rate (not a useful signal for index investors)
-- Buffer 1–2 months (advisory note only, no step-down)
+- Buffer 1–3 months (advisory note only, no step-down)
+
+**No buffer is not a step-down but a postponement.** With buffer < 1 month and any equity in the recommendation, the advice is "bygg buffer først": 100% høyrentekonto until the buffer is at least 1 month of expenses (`BUFFER_MIN_MONTHS`), *then* the full allocation from the matrix, while building the buffer on towards 3 months (`BUFFER_TARGET_MONTHS`). The recommendation box, the chat intro, the landing chart note and the advisory banner all say that investing starts only once the buffer is in place.
 
 ---
 
@@ -98,7 +99,7 @@ alloc            = ALLOC_TABLE[hBucket(horizon)][finalCol]
 
 ```javascript
 {
-  cappedLevel,   // 0–5: max allowed risk column (5 = no cap, 4 = buffer penalty)
+  cappedLevel,   // always 5 — no capacity cap (kept so callers/applyCapacity stay simple)
   displayLevel,  // 0–4: for the visual capacity bar
   label,         // "Ingen"/"Lav"/"Middels"/"God"/"Høy"
   bufferFlag,    // 'ok' | 'low' | 'critical'
@@ -108,9 +109,9 @@ alloc            = ALLOC_TABLE[hBucket(horizon)][finalCol]
 ```
 
 Rules:
-- `bufferMonths < 1` → `cappedLevel = 4` (one step down)
-- `bufferMonths 1–3` → `cappedLevel = 5`, `bufferFlag = 'low'` (note shown, no step-down)
-- `bufferMonths >= 3` → `cappedLevel = 5`, `bufferFlag = 'ok'`
+- `bufferMonths < 1` → `bufferFlag = 'critical'` ("bygg buffer først", see Core Philosophy)
+- `bufferMonths 1–3` → `bufferFlag = 'low'` (Buffertips note, no step-down)
+- `bufferMonths >= 3` → `bufferFlag = 'ok'`
 
 Savings rate does **not** cap equity — it was removed as it was the wrong signal for long-term investors.
 
@@ -186,17 +187,18 @@ keys = [0, 20, 35, 50, 65, 80, 100]
 The single function that assembles the recommendation box HTML. Used by all three paths (landing, advisory AI, manual form).
 
 ```javascript
-function buildRecHTML(engKey, hKey, bKey, rChar, bufferNoteHTML, horizNote, pAllocPct)
+function buildRecHTML(engKey, hKey, bKey, rChar, bufferNoteHTML, horizNote, pAllocPct, monthlyExpenses)
 ```
 
 Parameters:
 - `engKey` — "0"|"20"|"35"|"50"|"65"|"80"|"100"
 - `hKey` — "S"|"M"|"L"|"VL" (horizon bucket, from `hKeyFromYears`)
-- `bKey` — "L"|"M"|"H" (buffer bucket, from `bufKey`)
+- `bKey` — "L"|"M"|"H" (buffer bucket, from `bufKey`). `"L"` with `pAllocPct > 0` (`isBufferFirst`) renders the buffer-first variant below
 - `rChar` — "C"|"S"|"N"|"A" (risk behaviour character)
 - `bufferNoteHTML` — output of `bufferAdvisoryNote()`, or empty string
 - `horizNote` — legacy, pass `''`
 - `pAllocPct` — integer 0–100 (the actual allocation percentage)
+- `monthlyExpenses` — optional kr/month; turns the buffer targets into amounts ("ca. 30 000 kr")
 
 Output structure:
 ```html
@@ -209,6 +211,8 @@ Output structure:
 {bufferNoteHTML}
 {disclaimer}
 ```
+
+Buffer-first variant (`rec-box buffer-first`): title "Min anbefaling: bygg buffer først", two alloc-lines ("Nå: 100% høyrentekonto — til du har minst én måneds utgifter i buffer" / "Deretter: {pAllocPct}% aksjer · …"), and next-step with "1. Bygg bufferen før du investerer" and "2. Begynn å investere" ({ENG.nextSteps[engKey]}). `bufferNoteHTML` is not rendered in this variant. The callers replace the ENG title/horizon note with `BUFFER_FIRST_INTRO`.
 
 ---
 
@@ -252,7 +256,9 @@ After step 5: `deliverLandingRec()` computes allocation, builds rec-box, renders
 | 6 | Risk willingness | Same as landing step 4 |
 | 7 | Risk behaviour | Same as landing step 5 |
 
-**Nybegynner flow:** After step 0, if `suitability==='beginner'`, a "Godt å vite" info box is injected before step 1's question.
+**Nybegynner flow:** After step 0, if `suitability==='beginner'`, a "Godt å vite" info box is injected before the next question.
+
+**Reusing landing answers:** if the landing flow is complete (`landingStep >= LANDING_QUESTIONS.length`), `initAdvChat()` sets `advPrefilled`, shows a summary of those answers (`summariseLandingAnswers()`), and `advSend()` skips `ADV_PREFILLED_SKIP` (steps 1, 2, 3, 5, 6, 7) — so only suitability and income/expenses are asked, and the mortgage rate isn't asked again. The quick button "Endre svarene mine" calls `initAdvChat(true)` to run every question. `triggerDeeper()` ("Se full analyse") starts this prefilled chat.
 
 **Debt follow-up:** Same logic as landing — `advAskedDebtRate` flag, fires between steps 3 and 4.
 
@@ -434,7 +440,7 @@ Mobile breakpoint at `max-width: 680px`: advisory body stacks vertically, left p
 
 **`deliverAdvRec` uses `riskWillingness + riskComfort`** for the allocation formula — same as `deliverLandingRec`. If you change one, change both.
 
-**`renderResults` double-applies capacity** when called from `deliverAdvRec` — `ar` is already capacity-adjusted when passed in, then `applyCapacity` is called again inside. This is idempotent with the same inputs, so it's harmless but worth knowing.
+**`applyCapacity` is currently a no-op** — `cappedLevel` is always 5 since the buffer penalty was replaced by "bygg buffer først". It is kept so a future capacity rule has one place to go.
 
 **The `steps` field in ENG is no longer rendered.** `buildRecHTML` was updated to remove the `<ul>` steps list. The `steps` data still exists in `ENG` but is unused. You can safely delete it if you want to slim the file.
 

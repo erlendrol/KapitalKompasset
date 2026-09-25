@@ -231,3 +231,126 @@ test('advisory chart hides the dashed Bankkonto line when the recommendation is 
   assert.deepEqual(datasetLabels(lastChart(app)), ['95%', 'Forventet', '5%', 'Bankkonto']);
   assert.ok(!app.el('legendBank').classList.contains('hidden'));
 });
+
+// ── Buffer først ──
+const answersWith = changes => LANDING_ANSWERS.map((a, i) => changes[i] ?? a);
+const recBubble = bubbles => bubbles.find(b => b.innerHTML.includes('rec-box')).innerHTML;
+
+test('no buffer: recommendation is "bygg buffer først", then the full allocation', () => {
+  const app = loadApp();
+  // Høy + 6–10 år = 80%; no buffer used to step this down to 65%
+  answersWith({ 1: 'Nei, ingen buffer', 3: '6–10 år' }).forEach(a => app.sayLanding(a));
+  const rec = recBubble(app.landingBubbles());
+  assert.match(rec, /Min anbefaling: bygg buffer først/);
+  assert.match(rec, /Nå:<\/strong> 100% høyrentekonto — til du har minst én måneds utgifter i buffer/);
+  assert.match(rec, /Deretter:<\/strong> 80% aksjer/);
+  assert.match(rec, /Ikke begynn å investere før dette er på plass/);
+  assert.match(rec, /Først når bufferen er på plass, anbefaler jeg å begynne å investere/);
+  assert.match(app.el('landingChartWrap').innerHTML, /Investeringen gjelder først når bufferen er bygget opp/);
+});
+
+test('1–3 months buffer: invest now, with a tip to build the buffer', () => {
+  const app = loadApp();
+  answersWith({ 1: 'Ca. 1–2 måneder' }).forEach(a => app.sayLanding(a));
+  const rec = recBubble(app.landingBubbles());
+  assert.doesNotMatch(rec, /bygg buffer først/);
+  assert.match(rec, /100% aksjer/);
+  assert.match(rec, /Buffertips/);
+});
+
+test('no buffer with a bank recommendation keeps the normal box and buffer note', () => {
+  const app = loadApp();
+  answersWith({ 1: 'Nei, ingen buffer', 3: 'Under 3 år', 4: 'Lav — jeg vil ha stabilt og trygt' }).forEach(a => app.sayLanding(a));
+  const rec = recBubble(app.landingBubbles());
+  assert.doesNotMatch(rec, /bygg buffer først/);
+  assert.match(rec, /0% aksjer · Høyrentekonto/);
+  assert.match(rec, /nesten ingen buffer/);
+});
+
+test('manual form: 0 months buffer triggers buffer-first with amounts from expenses', () => {
+  const app = loadApp();
+  app.renderResults({ horizon: 20, monthly: 5000, bufferMonths: 0, expenses: 360000, riskLabel: 'Høy', showRecBox: true });
+  const box = app.el('recBoxContent').innerHTML;
+  assert.match(box, /bygg buffer først/);
+  assert.match(box, /minst én måneds utgifter \(ca\. 30\s000 kr\)/);
+  assert.match(box, /3 måneders utgifter \(ca\. 90\s000 kr\)/);
+  assert.match(app.el('riskBanner').innerHTML, /Bygg buffer først/);
+});
+
+// ── Dybdeanalyse gjenbruker svarene fra forsiden ──
+const AMOUNT_QUESTION = /Hvor mye penger snakker vi om/;
+const aiText = bubbles => bubbles.map(b => b.innerHTML).join('\n');
+
+test('full analysis reuses landing answers and only asks experience and income', () => {
+  const app = loadApp();
+  LANDING_ANSWERS.forEach(a => app.sayLanding(a));
+  app.sayLanding('Ja, vis meg full analyse');
+
+  const intro = app.advBubbles()[0].innerHTML;
+  assert.match(intro, /svarene dine fra forsiden/);
+  assert.match(intro, /Beløp:<\/strong> 5\s000 kr\/mnd/);
+  assert.match(intro, /Tidshorisont:<\/strong> 20 år/);
+  assert.match(intro, /Risikovilje:<\/strong> Høy/);
+
+  app.sayAdv('Nei, nybegynner');
+  app.sayAdv('Lønn 600 000, utgifter 360 000');
+  const text = aiText(app.advBubbles());
+  assert.doesNotMatch(text, AMOUNT_QUESTION);
+  assert.doesNotMatch(text, /Når ser du for deg å bruke pengene/);
+  assert.match(text, /Godt å vite før du starter/);
+  assert.equal(recCount(app.advBubbles()), 1);
+  assert.equal(app.collectedState.horizon, 20);
+  assert.equal(app.collectedState.expenses, 360000);
+});
+
+test('mortgage rate from the landing page is not asked again', () => {
+  const app = loadApp();
+  const answers = answersWith({ 2: 'Ja, boliglån' });
+  answers.splice(3, 0, 'Ca. 5%');
+  answers.forEach(a => app.sayLanding(a));
+  app.sayLanding('Ja, vis meg full analyse');
+  assert.match(app.advBubbles()[0].innerHTML, /Boliglån:<\/strong> ja, ca\. 5% rente/);
+  app.sayAdv('Ja, erfaring med fond/verdipapirer');
+  app.sayAdv('Lønn 600 000, utgifter 360 000');
+  assert.doesNotMatch(aiText(app.advBubbles()), /hvilken rente/);
+  assert.equal(recCount(app.advBubbles()), 1);
+});
+
+test('"Endre svarene mine" restarts the full question flow', () => {
+  const app = loadApp();
+  LANDING_ANSWERS.forEach(a => app.sayLanding(a));
+  app.sayLanding('Ja, vis meg full analyse');
+  assert.doesNotMatch(aiText(app.advBubbles()), AMOUNT_QUESTION);
+  app.sayAdv('Endre svarene mine');
+  app.sayAdv('Nei, nybegynner');
+  assert.match(aiText(app.advBubbles()), AMOUNT_QUESTION);
+});
+
+test('advisory without the landing flow still asks every question', () => {
+  const app = loadApp();
+  app.chooseMode('ai');
+  app.sayAdv('Nei, nybegynner');
+  assert.match(aiText(app.advBubbles()), AMOUNT_QUESTION);
+});
+
+test('buffer-first in the full analysis uses the given expenses', () => {
+  const app = loadApp();
+  answersWith({ 1: 'Nei, ingen buffer' }).forEach(a => app.sayLanding(a));
+  app.sayLanding('Ja, vis meg full analyse');
+  app.sayAdv('Nei, nybegynner');
+  app.sayAdv('Lønn 600 000, utgifter 360 000');
+  const rec = recBubble(app.advBubbles());
+  assert.match(rec, /bygg buffer først/);
+  assert.match(rec, /ca\. 30\s000 kr/);
+  assert.match(app.el('riskBanner').innerHTML, /minst én måneds utgifter \(ca\. 30\s000 kr\)/);
+});
+
+test('opening the full analysis again keeps the finished advisory chat', () => {
+  const app = loadApp();
+  LANDING_ANSWERS.forEach(a => app.sayLanding(a));
+  app.sayLanding('Ja, vis meg full analyse');
+  app.sayAdv('Nei, nybegynner');
+  app.sayAdv('Lønn 600 000, utgifter 360 000');
+  app.sayLanding('Ja, vis meg full analyse');
+  assert.equal(recCount(app.advBubbles()), 1);
+});
