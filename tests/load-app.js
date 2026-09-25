@@ -50,7 +50,7 @@ function loadApp() {
   const exportsSrc = `
     return {
       normaliseNumber, interpretInput, hBucket, LANDING_QUESTIONS,
-      landingSend, advSend, chooseMode, renderLandingChart,
+      landingSend, advSend, chooseMode, renderLandingChart, renderResults,
       get collectedState() { return collectedState; },
       get landingStep() { return landingStep; },
       get advStep() { return advStep; },

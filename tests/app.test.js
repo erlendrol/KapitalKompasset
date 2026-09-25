@@ -190,3 +190,33 @@ test('bond part of the blended return is taxed 22% (bond funds are not ASK-eligi
   app.renderLandingChart({ lumpSum: 100000, years: 1, stockFraction: 0.5 });
   assert.match(app.el('landingChartWrap').innerHTML, /4\.8% forventet årlig avkastning \(50% aksjer\)/);
 });
+
+test('advisory results label 0% aksjer as bank, not bonds', () => {
+  const app = loadApp();
+  // 1–3 år: Meget lav → "Bank", Lav → numeric 0; both are recommended as høyrentekonto
+  for (const riskLabel of ['Meget lav', 'Lav']) {
+    const r = app.renderResults({ horizon: 2, monthly: 5000, riskLabel });
+    assert.equal(r.pAlloc, 0, riskLabel);
+    assert.equal(app.el('profileName').textContent, 'Bankkonto', riskLabel);
+    assert.equal(app.el('profileSub').textContent, '0% aksjer · 100% bankinnskudd', riskLabel);
+    assert.equal(app.el('allocBLabel').textContent, 'Bankinnskudd', riskLabel);
+    assert.doesNotMatch(app.el('allocStrip').innerHTML, /#c9a84c/, riskLabel);
+  }
+});
+
+test('advisory results keep the bond label for mixed allocations', () => {
+  const app = loadApp();
+  app.renderResults({ horizon: 2, monthly: 5000, riskLabel: 'Lav' }); // bank first, then switch back
+  app.renderResults({ horizon: 20, monthly: 5000, riskLabel: 'Middels' });
+  assert.equal(app.el('profileSub').textContent, '65% aksjer · 35% obligasjoner');
+  assert.equal(app.el('allocBLabel').textContent, 'Obligasjoner');
+  assert.match(app.el('allocStrip').innerHTML, /#c9a84c/);
+});
+
+test('bank allocation is not charged fund fees', () => {
+  const app = loadApp();
+  const base = { horizon: 2, monthly: 5000, startCapital: 100000, riskLabel: 'Lav' };
+  const cheap = app.renderResults({ ...base, costB: 0 });
+  const pricey = app.renderResults({ ...base, costB: 0.02 });
+  assert.equal(cheap.p50, pricey.p50);
+});

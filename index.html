@@ -497,7 +497,7 @@ input[type=number]:focus{border-color:var(--teal);}
             <div class="alloc-strip" id="allocStrip"></div>
             <div style="display:flex;gap:12px;margin-top:5px;font-size:0.7rem;color:var(--ink-muted);">
               <span style="color:#2a7f7f">■ <span id="allocS"></span> Aksjer</span>
-              <span style="color:#c9a84c">■ <span id="allocB"></span> Obligasjoner</span>
+              <span id="allocBLegend" style="color:#c9a84c">■ <span id="allocB"></span> <span id="allocBLabel">Obligasjoner</span></span>
             </div>
           </div>
         </div>
@@ -755,8 +755,10 @@ function renderResults(params){
   const ar=applyCapacity(riskLabel,cap);
   const alloc=ALLOC_TABLE[hBucket(horizon)][RISK_SCORE[ar]??3];
   const pAlloc=alloc==="Bank"?0:alloc;
-  const profile=alloc==="Bank"?{name:"Bankkonto",stocks:0,bonds:0,color:"#7a9e7a"}:profForAlloc(pAlloc);
-  const cf=pAlloc*costS+(1-pAlloc)*costB;
+  // 0% aksjer (numeric 0 or "Bank") is recommended as høyrentekonto — show and chart it as bank, not bonds
+  const isBank=pAlloc===0;
+  const profile=isBank?{name:"Bankkonto",stocks:0,bonds:0,color:"#7a9e7a"}:profForAlloc(pAlloc);
+  const cf=isBank?0:pAlloc*costS+(1-pAlloc)*costB;  // no fund fees on a bank account
   const data=MC[profile.name==="Bankkonto"?"Bankkonto":profile.name]||MC["Forsiktig"];
   const sv=monthly*12;
   const p50=[],p5=[],p95=[],cash=[];
@@ -803,8 +805,12 @@ function renderResults(params){
   document.getElementById('resultsContent').classList.remove('hidden');
   document.getElementById('profileDot').style.background=profile.color;
   document.getElementById('profileName').textContent=profile.name;
-  document.getElementById('profileSub').textContent=`${Math.round(pAlloc*100)}% aksjer · ${Math.round((1-pAlloc)*100)}% obligasjoner`;
-  document.getElementById('allocStrip').innerHTML=`<div style="flex:${Math.max(pAlloc,0.001)};background:${profile.color}"></div><div style="flex:${Math.max(1-pAlloc,0.001)};background:#c9a84c"></div>`;
+  const restLabel=isBank?'bankinnskudd':'obligasjoner';
+  const restColor=isBank?profile.color:'#c9a84c';
+  document.getElementById('profileSub').textContent=`${Math.round(pAlloc*100)}% aksjer · ${Math.round((1-pAlloc)*100)}% ${restLabel}`;
+  document.getElementById('allocStrip').innerHTML=`<div style="flex:${Math.max(pAlloc,0.001)};background:${profile.color}"></div><div style="flex:${Math.max(1-pAlloc,0.001)};background:${restColor}"></div>`;
+  document.getElementById('allocBLegend').style.color=restColor;
+  document.getElementById('allocBLabel').textContent=restLabel.charAt(0).toUpperCase()+restLabel.slice(1);
   document.getElementById('allocS').textContent=`${Math.round(pAlloc*100)}%`;
   document.getElementById('allocB').textContent=`${Math.round((1-pAlloc)*100)}%`;
   document.getElementById('yrLabel').textContent=`${horizon} år`;

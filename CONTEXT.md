@@ -312,7 +312,7 @@ Internally:
 6. Renders Chart.js line chart into `#mainChart`
 7. If `showRecBox`: builds and injects `buildRecHTML(...)` into `#recBoxContent`
 
-**MC profiles used:** Forsiktig (0% stocks), Moderat (30%), Balansert (50%), Vekst (80%), Offensiv (100%), Bankkonto. These map via `profForAlloc()` which picks the nearest profile by stocks fraction.
+**MC profiles used:** Forsiktig (0% stocks), Moderat (30%), Balansert (50%), Vekst (80%), Offensiv (100%), Bankkonto. These map via `profForAlloc()` which picks the nearest profile by stocks fraction. Any 0% allocation (numeric `0` or `"Bank"`) uses the Bankkonto profile instead: it is recommended as høyrentekonto, so the panel says "0% aksjer · 100% bankinnskudd", the second legend entry reads "Bankinnskudd", and no fund fees are deducted.
 
 ---
 
