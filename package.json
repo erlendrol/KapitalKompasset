@@ -1,0 +1,8 @@
+{
+  "name": "kapitalkompasset",
+  "private": true,
+  "description": "Single-file Norwegian investment advisory web app",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  }
+}

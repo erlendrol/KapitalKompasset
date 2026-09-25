@@ -1006,16 +1006,26 @@ const LANDING_QUESTIONS = [
     ask: 'Hei! 👋 La oss finne ut hva som passer best for deg.<br><br><span class="ai-question">Hvor mye penger snakker vi om — er det et engangsbeløp, månedlig sparing, eller begge deler?</span>',
     quick: ['5 000 kr/mnd','10 000 kr/mnd','50 000 kr engangsbeløp','200 000 kr engangsbeløp','500 000 kr engangsbeløp'],
     parse(txt){
-      const t=txt.toLowerCase();
-      const num=(s)=>{const m=s.match(/[\d\s,.]+/);return m?+m[0].replace(/[\s,.]/g,''):0;};
-      const hasMonthly=t.includes('/mnd')||t.includes('per mnd')||t.includes('månedlig')||t.includes('måned');
-      const hasLump=t.includes('engangs')||t.includes('engang');
-      if(hasMonthly){collectedState.monthly=num(txt)||5000;}
-      else if(hasLump){collectedState.lumpSum=num(txt)||100000;}
-      else{
-        const n=num(txt);
-        if(n>0){if(n<=50000)collectedState.monthly=n;else collectedState.lumpSum=n;}
+      // Split "5 000 kr/mnd og 100 000 engangs" into parts so both amounts are kept
+      const parts=txt.toLowerCase().split(/\s+og\s+|\s*\+\s*|,\s+|;/);
+      let monthly=null,lump=null;const loose=[];
+      for(const p of parts){
+        const n=normaliseNumber(p);
+        if(n===null||n<=0)continue;
+        if(/mnd|måned/.test(p))monthly=n;
+        else if(/engang/.test(p))lump=n;
+        else loose.push(n);
       }
+      // Numbers without context: fill whichever slot is still empty, else guess by size
+      for(const n of loose){
+        if(monthly!==null&&lump===null)lump=n;
+        else if(lump!==null&&monthly===null)monthly=n;
+        else if(n<=50000)monthly=n;
+        else lump=n;
+      }
+      if(monthly===null&&lump===null)return;
+      collectedState.monthly=monthly||0;
+      collectedState.lumpSum=lump||0;
     }
   },
   // Step 1: buffer
@@ -1045,13 +1055,14 @@ const LANDING_QUESTIONS = [
     ask: '<span class="ai-question">Når ser du for deg å bruke pengene?</span><br>Jo lenger tidshorisont, jo mer risiko kan du tåle.',
     quick: ['Under 3 år','3–6 år','6–10 år','10–15 år','Over 15 år'],
     parse(txt){
-      const t=txt.toLowerCase();
-      if(t.includes('under 3'))collectedState.horizon=2;
-      else if(t.includes('3')&&t.includes('6'))collectedState.horizon=6;
-      else if(t.includes('6')&&t.includes('10'))collectedState.horizon=10;
-      else if(t.includes('10')&&t.includes('15'))collectedState.horizon=15;
-      else if(t.includes('over 15'))collectedState.horizon=20;
-      else collectedState.horizon=10;
+      const t=txt.toLowerCase().trim();
+      // Quick buttons → a representative year inside each hBucket row
+      const QUICK={'under 3 år':2,'3–6 år':5,'6–10 år':8,'10–15 år':13,'over 15 år':20};
+      if(QUICK[t]!==undefined){collectedState.horizon=QUICK[t];return;}
+      // Free text: "20 år", "ca. 7", "om 18 måneder" (clamped to the 1–40 yr MC data range)
+      const mo=t.match(/(\d+)\s*(?:mnd|måned)/);
+      const n=mo?Math.ceil(+mo[1]/12):normaliseNumber(t);
+      collectedState.horizon=n!==null&&n>0?Math.min(40,Math.max(1,Math.round(n))):10;
     }
   },
   // Step 4: risk willingness (new)
@@ -1111,6 +1122,17 @@ function landingSend(){
   inp.value='';setLandingQuick([]);
   landingAddBubble(text,'user');
   landingLocked=true;
+
+  // ── AFTER RECOMMENDATION — never re-deliver; answer the follow-up buttons instead ──
+  if(landingStep>=LANDING_QUESTIONS.length){
+    const t=text.toLowerCase();
+    setTimeout(()=>{
+      if(/^ja\b|full analyse/.test(t)) triggerDeeper();
+      else landingAddBubble('Supert! Du kan laste ned anbefalingen som PDF over, eller trykke <strong>↺ Nullstill</strong> øverst for å starte på nytt.','ai');
+      landingLocked=false;
+    },400);
+    return;
+  }
 
   // ── RATE FOLLOW-UP (step 2, after debt confirmed) ──
   if(landingStep===2&&askedDebtRate&&collectedState.hasDebt){
@@ -1237,15 +1259,16 @@ function normaliseNumber(text){
   // suffix: k/K, tusen, mill/million
   s=s.replace(/(\d+(?:[.,]\d*)?)\s*[kK]\b/g,(m,n)=>String(parseFloat(n.replace(',','.'))*1000));
   s=s.replace(/(\d+(?:[.,]\d*)?)\s*tusen\b/gi,(m,n)=>String(parseFloat(n.replace(',','.'))*1000));
-  s=s.replace(/(\d+(?:[.,]\d*)?)\s*mill(?:ion)?\b/gi,(m,n)=>String(parseFloat(n.replace(',','.'))*1000000));
-  // space / dot / comma as thousand separator (only before exactly 3 digits)
-  s=s.replace(/(\d)\s(\d{3})(?!\d)/g,'$1$2');
-  s=s.replace(/(\d)\.(\d{3})(?!\d)/g,'$1$2');
-  s=s.replace(/(\d),(\d{3})(?!\d)/g,'$1$2');
+  s=s.replace(/(\d+(?:[.,]\d*)?)\s*mill(?:ion(?:er)?)?\b/gi,(m,n)=>String(parseFloat(n.replace(',','.'))*1000000));
+  // space / dot / comma as thousand separator (only before exactly 3 digits).
+  // Repeat so "1 000 000" collapses fully; a leading lone 0 ("0,045") is a decimal, not thousands.
+  let prev;
+  do{prev=s;s=s.replace(/(\d+)[\s.,](\d{3})(?!\d)/,(m,a,b)=>a==='0'?m:a+b);}while(s!==prev);
   // remaining comma → decimal point
-  s=s.replace(',','.');
-  const n=parseFloat(s.trim());
-  return isNaN(n)?null:n;
+  s=s.replace(/(\d),(\d)/g,'$1.$2');
+  // first number anywhere in the text ("Jeg kan spare 3000 i måneden" → 3000)
+  const m=s.match(/\d+(?:\.\d+)?/);
+  return m?parseFloat(m[0]):null;
 }
 
 function interpretInput(text,step){
@@ -1259,7 +1282,9 @@ function interpretInput(text,step){
     if(/litt sparing|litt i sparing|ikke mye|bare litt/.test(t))
       return{type:'clarify',message:'Helt greit! Hva er du nærmest — noen hundrelapper i måneden, eller noen tusenlapper?'};
     const num=normaliseNumber(t);
-    if(num!==null&&num>0){
+    if(num===null)
+      return{type:'clarify',message:'Skriv gjerne et omtrentlig beløp — for eksempel «5 000 kr/mnd», «100 000 kr engangsbeløp», eller begge deler: «5 000 kr/mnd og 100 000 kr engangsbeløp».'};
+    if(num>0){
       const hasCtx=/mnd|måned|månedlig|engang|engangs|per\s|\//.test(t);
       if(!hasCtx){
         const f=fmt(num);
@@ -1316,21 +1341,21 @@ function interpretInput(text,step){
   if(step===3){
     const ALL_HORIZON_QUICK=['Under 3 år','3–6 år','6–10 år','10–15 år','Over 15 år'];
 
+    // QUICK_BUTTON — exact button labels are mapped by parse(), never re-interpreted
+    if(ALL_HORIZON_QUICK.some(q=>q.toLowerCase()===t))
+      return{type:'understood',silent:true};
+
     // UNKNOWN_HORIZON
     if(/vet ikke|usikker|aner ikke|ingen anelse|vanskelig å si|ikke sikker|^hmm?$|^\?+$|vet ikke helt/.test(t))
       return{type:'clarify',message:'Det er helt vanlig å ikke vite dette nøyaktig — et grovt anslag er mer enn godt nok 😊 Tenk på det sånn: er dette penger du kan se for deg å la stå i mer enn 10 år, eller er det mer sannsynlig at du trenger dem i løpet av de neste 5–6 årene?',quick:ALL_HORIZON_QUICK};
 
+    // AGE_BASED — before LIFE_EVENT/VAGUE_LONG so "jeg er 30 og pensjonerer meg ved 67" is computed
+    const ages=t.match(/\b(?:er|fyller)\s+(\d+).*?(?:pensjon\S*\s+(?:meg\s+)?(?:ved\s+)?|ved\s+)(\d+)/i);
+    if(ages){const yrs=+ages[2]-+ages[1];if(yrs>0&&yrs<60)return{type:'fallback',message:`Bruker omtrent ${yrs} år til pensjon 👍`,field:'horizon',value:Math.min(40,yrs)};}
+
     // LIFE_EVENT
     if(/til barna er store|til vi kjøper hus|til bryllupet|til vi skal reise|til jeg pensjonerer meg/.test(t))
       return{type:'clarify',message:'Det høres fint ut 😊 Vet du omtrent hvor mange år det er til da? Et grovt anslag holder helt fint.',quick:ALL_HORIZON_QUICK};
-
-    // APPROXIMATE_NUMBER — strip hedging words, pass cleaned text to understood so parse() handles it
-    const approxMatch=t.match(/(?:ca\.?|omtrent|rundt|cirka|noe sånt som)\s+(\d+)/i);
-    if(approxMatch){
-      // Rewrite collectedState via the existing landing parser using the bare number string
-      LANDING_QUESTIONS[3].parse(approxMatch[1]+' år');
-      return{type:'understood',silent:true};
-    }
 
     // VAGUE_LONG
     if(/\blenge\b|lang tid|mange år|til jeg er gammel|pensjon|alltid$/.test(t))
@@ -1342,14 +1367,17 @@ function interpretInput(text,step){
 
     // RANGE_INPUT
     const rng=t.match(/(\d+)\s*[-–]\s*(\d+)/)||t.match(/mellom\s+(\d+)\s+og\s+(\d+)/i);
-    if(rng){const mid=Math.round((+rng[1]+ +rng[2])/2);return{type:'fallback',message:`Bruker midtpunktet — ca. ${mid} år 👍`,field:'horizon',value:mid};}
+    if(rng){const mid=Math.min(40,Math.round((+rng[1]+ +rng[2])/2));return{type:'fallback',message:`Bruker midtpunktet — ca. ${mid} år 👍`,field:'horizon',value:mid};}
 
-    // AGE_BASED
-    const ages=t.match(/(?:er|fyller)\s+(\d+).*?(?:pensjon\S*\s+(?:meg\s+)?(?:ved\s+)?|ved\s+)(\d+)/i);
-    if(ages){const yrs=+ages[2]-+ages[1];if(yrs>0&&yrs<60)return{type:'fallback',message:`Bruker omtrent ${yrs} år til pensjon 👍`,field:'horizon',value:yrs};}
-    if(/jeg er \d+|er \d+ år/.test(t)&&!rng)
+    // AGE_ONLY — "jeg er 30 år" is an age, not a horizon ("under 3 år"/"over 15 år" must not match)
+    if(/\bjeg er \d+|(?:^|\s)er \d+ år/.test(t))
       return{type:'clarify',message:'Omtrent hvor mange år til du trenger pengene?',quick:ALL_HORIZON_QUICK};
 
+    // NO_NUMBER — nothing we can turn into years
+    if(normaliseNumber(t)===null)
+      return{type:'clarify',message:'Omtrent hvor mange år er det til du trenger pengene? Et grovt anslag holder, f.eks. «10 år».',quick:ALL_HORIZON_QUICK};
+
+    // Numbers incl. "ca. 20 år" / "om 18 måneder" are handled by parse()
     return{type:'understood',silent:true};
   }
 
@@ -1576,6 +1604,15 @@ function advSend(){
   inp.value='';setAdvQuick([]);
   advAddBubble(text,'user');
   advLocked=true;
+
+  // ── AFTER RECOMMENDATION — never re-deliver ──
+  if(advStep>=ADV_QUESTIONS.length){
+    setTimeout(()=>{
+      advAddBubble('Analysen er ferdig — se grafen og anbefalingen i resultatpanelet. Bytt til <strong>Manuell</strong> for å justere tallene, eller trykk <strong>↺ Nullstill</strong> for å starte på nytt.','ai');
+      advLocked=false;
+    },400);
+    return;
+  }
 
   // ── RATE FOLLOW-UP ──
   if(advAskedDebtRate&&collectedState.hasDebt&&advStep===3){
