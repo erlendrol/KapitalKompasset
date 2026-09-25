@@ -479,3 +479,92 @@ test('PDF before any recommendation reports an error on the button instead of th
   assert.equal(app.pdfs.length, 0);
   assert.equal(btn.disabled, false);  // re-enabled (timers run synchronously in tests)
 });
+
+// ── Tallformat, Nullstill, knapper og modell ──
+test('amounts use Norwegian decimal comma', () => {
+  const { fmt } = loadApp();
+  assert.equal(fmt(2850000), '2,85 mill kr');
+  assert.equal(fmt(1500000000), '1,50 mrd kr');
+  assert.match(fmt(30000), /^30\s000 kr$/);
+});
+
+test('Nullstill cancels chat messages still on their way', () => {
+  const app = loadApp({ manualTimers: true });
+  app.flushTimers();                     // greeting
+  app.sayLanding('5 000 kr/mnd');        // queues the buffer question
+  app.resetSession();
+  app.flushTimers();
+  const text = app.landingBubbles().map(b => b.innerHTML + b.textContent).join('\n');
+  assert.doesNotMatch(text, /Har du en buffer/, 'old question must not appear after reset');
+  assert.doesNotMatch(text, /5 000 kr\/mnd/, 'old answer is cleared');
+  assert.equal(app.landingBubbles().length, 1, 'exactly one fresh greeting, no leftovers or duplicates');
+  assert.match(text, /La oss finne ut hva som passer best/);
+  assert.equal(app.landingStep, 0);
+});
+
+test('Nullstill clears stored results so no stale PDF can be made', () => {
+  const app = loadApp();
+  app.renderResults({ horizon: 20, monthly: 5000, riskLabel: 'Middels' });
+  app.resetSession();
+  app.downloadAdvisoryPDF(fakeBtn());
+  assert.equal(app.pdfs.length, 0);
+});
+
+test('risk willingness and reaction to a fall accept the buttons only', () => {
+  const app = loadApp();
+  LANDING_ANSWERS.slice(0, 4).forEach(a => app.sayLanding(a));
+  assert.equal(app.landingStep, 4);
+  assert.equal(app.el('landingInput').disabled, true);
+  assert.match(app.el('landingInput').placeholder, /Velg et av alternativene/);
+  const before = app.landingBubbles().length;
+  app.sayLanding('ganske høy');         // typed text is ignored
+  assert.equal(app.landingStep, 4);
+  assert.equal(app.landingBubbles().length, before);
+  app.sayLanding(LANDING_ANSWERS[4]);   // a button label is accepted
+  assert.equal(app.landingStep, 5);
+  assert.equal(app.el('landingInput').disabled, true);
+  app.sayLanding(LANDING_ANSWERS[5]);
+  assert.equal(app.el('landingInput').disabled, false, 'input is back after the recommendation');
+});
+
+test('amounts, buffer and horizon can still be typed', () => {
+  const app = loadApp();
+  for (const a of ['Jeg sparer 4000 i måneden', '2 måneder', 'Nei, ingen gjeld']) {
+    assert.equal(app.el('landingInput').disabled, false, a);
+    app.sayLanding(a);
+  }
+  assert.equal(app.el('landingInput').disabled, false);
+  app.sayLanding('12 år');
+  assert.equal(app.collectedState.monthly, 4000);
+  assert.equal(app.collectedState.horizon, 12);
+});
+
+test('advisory chat: risk steps are buttons only too', () => {
+  const app = loadApp();
+  app.chooseMode('ai');
+  ['Nei, nybegynner', '10 000 kr/mnd', 'Ja, godt over 3 måneder', 'Nei, ingen gjeld', 'Lønn 600 000, utgifter 350 000', '20 år']
+    .forEach(a => app.sayAdv(a));
+  assert.equal(app.advStep, 6);
+  assert.equal(app.el('advInput').disabled, true);
+  app.sayAdv('offensiv tror jeg');
+  assert.equal(app.advStep, 6);
+});
+
+test('a 65% allocation is charted between the 50% and 80% profiles, not as 50%', () => {
+  const app = loadApp();
+  // 10–15 år row: Lav 50%, Middels 65%, Offensiv 80%
+  const run = riskLabel => app.renderResults({ horizon: 12, monthly: 5000, startCapital: 100000, riskLabel, costS: 0, costB: 0 }).p50;
+  const [p50, p65, p80] = ['Lav', 'Middels', 'Offensiv'].map(run);
+  assert.ok(p65 > p50 * 1.02 && p65 < p80 * 0.98, `${p50} < ${p65} < ${p80}`);
+  app.renderResults({ horizon: 20, monthly: 5000, riskLabel: 'Middels' });
+  app.downloadAdvisoryPDF(fakeBtn());
+  assert.match(app.lastPdf().allText(), /interpolert mellom Balansert \(50% aksjer\) og Vekst \(80% aksjer\)/);
+});
+
+test('bank in the full analysis is shown after 22% tax, like the landing chart', () => {
+  const app = loadApp();
+  const r = app.renderResults({ horizon: 2, monthly: 0, startCapital: 100000, riskLabel: 'Lav' });
+  assert.equal(r.pAlloc, 0);
+  // ~2.5% before tax → ~1.9% after tax per year (untaxed data gave ~104 900)
+  assert.ok(r.p50 > 103500 && r.p50 < 104100, String(r.p50));
+});

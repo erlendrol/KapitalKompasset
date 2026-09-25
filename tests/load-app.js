@@ -10,7 +10,7 @@ class FakeEl {
   constructor(id) {
     this.id = id;
     this.value = '';
-    this.innerHTML = '';
+    this._html = '';
     this.textContent = '';
     this.children = [];
     this.style = {};
@@ -24,6 +24,9 @@ class FakeEl {
       contains: c => classes.has(c),
     };
   }
+  // Clearing innerHTML removes the children, like in a browser
+  get innerHTML() { return this._html; }
+  set innerHTML(v) { this._html = v; if (v === '') this.children = []; }
   appendChild(c) { this.children.push(c); return c; }
   remove() {}
   querySelector() { return null; }
@@ -33,7 +36,8 @@ class FakeEl {
   getContext() { return {}; }
 }
 
-function loadApp() {
+// manualTimers: queue setTimeout callbacks until flushTimers() instead of running them at once
+function loadApp({ manualTimers = false } = {}) {
   const els = {};
   const document = {
     getElementById: id => (els[id] ||= new FakeEl(id)),
@@ -41,8 +45,12 @@ function loadApp() {
     querySelectorAll: () => [],
     createElement: () => new FakeEl(),
   };
-  // Run timers synchronously so a chat turn completes within one call
-  const setTimeout = fn => fn();
+  // Timers run synchronously by default so a chat turn completes within one call
+  const timers = new Map();
+  let nextTimer = 1;
+  const setTimeout = manualTimers ? fn => { const id = nextTimer++; timers.set(id, fn); return id; } : fn => fn();
+  const clearTimeout = id => timers.delete(id);
+  const flushTimers = () => { while (timers.size) { const [id, fn] = timers.entries().next().value; timers.delete(id); fn(); } };
   // Records every chart config so tests can inspect the drawn datasets
   const charts = [];
   const chartImage = { url: 'data:image/png;base64,' + 'A'.repeat(8000) };  // set url to '' to simulate a failed chart
@@ -73,18 +81,18 @@ function loadApp() {
     return {
       normaliseNumber, interpretInput, hBucket, LANDING_QUESTIONS,
       landingSend, advSend, chooseMode, renderLandingChart, renderResults, calculate,
-      downloadLandingPDF, downloadAdvisoryPDF, pdfSafe, htmlToText,
+      downloadLandingPDF, downloadAdvisoryPDF, pdfSafe, htmlToText, fmt, resetSession,
       get collectedState() { return collectedState; },
       get landingStep() { return landingStep; },
       get advStep() { return advStep; },
       get advMode() { return advMode; },
     };`;
-  const app = new Function('document', 'setTimeout', 'Chart', 'window', script + exportsSrc)(document, setTimeout, Chart, window);
+  const app = new Function('document', 'setTimeout', 'clearTimeout', 'Chart', 'window', script + exportsSrc)(document, setTimeout, clearTimeout, Chart, window);
 
   const bubbles = id => els[id] ? els[id].children : [];
   // Object.create keeps the live getters (spreading would snapshot them)
   return Object.assign(Object.create(app), {
-    charts, pdfs, chartImage,
+    charts, pdfs, chartImage, flushTimers,
     lastPdf: () => pdfs[pdfs.length - 1],
     el: id => document.getElementById(id),
     landingBubbles: () => bubbles('landingMsgs'),

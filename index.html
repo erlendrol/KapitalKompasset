@@ -515,7 +515,7 @@ input[type=number]:focus{border-color:var(--teal);}
           <div class="chart-title">Simulert porteføljeutvikling — 1 000 scenarioer</div>
           <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
           <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:0.7rem;color:var(--ink-muted);">
-            <span>━ Forventet</span><span>▓ 90% bånd</span><span id="legendBank">╌ Bankkonto</span>
+            <span>━ Forventet</span><span>▓ 90% bånd</span><span id="legendBank">╌ Bankkonto (etter skatt)</span>
           </div>
         </div>
         <button class="pdf-btn results-pdf-btn" onclick="downloadAdvisoryPDF(this)">📄 Last ned analyse (PDF)</button>
@@ -596,8 +596,28 @@ function bufferAdvisoryNote(bufferFlag, monthly){
   return '';
 }
 
+// MC paths for any stock share: geometric interpolation between the two nearest simulated
+// profiles (the data only has 0/30/50/80/100% — nearest-profile charted e.g. 65% as 50%)
+function mcPathsFor(s){
+  const ps=[...PROFILES].sort((a,b)=>a.stocks-b.stocks);
+  let lo=ps[0],hi=ps[ps.length-1];
+  for(let i=0;i<ps.length-1;i++){if(s>=ps[i].stocks&&s<=ps[i+1].stocks){lo=ps[i];hi=ps[i+1];break;}}
+  const w=hi.stocks===lo.stocks?0:(s-lo.stocks)/(hi.stocks-lo.stocks);
+  const mix=k=>MC[lo.name][k].map((a,i)=>Math.exp((1-w)*Math.log(a)+w*Math.log(MC[hi.name][k][i])));
+  return {p50:mix('p50'),p5:mix('p5'),p95:mix('p95'),lo,hi,w};
+}
+// Bank account net of 22% tax on interest, like the landing chart (MC.Bankkonto is before tax)
+const BANK_TAX=0.22;
+function netOfTax(path){let v=1,prev=1;return path.map(g=>{const r=g/prev-1;prev=g;v*=1+r*(1-BANK_TAX);return v;});}
+const BANK_NET={p50:netOfTax(MC.Bankkonto.p50),p5:netOfTax(MC.Bankkonto.p5),p95:netOfTax(MC.Bankkonto.p95)};
 function profForAlloc(s){let b=PROFILES[0],bd=1e9;for(const p of PROFILES){const d=Math.abs(p.stocks-s);if(d<bd){bd=d;b=p;}}return b;}
-function fmt(v){if(v>=1e9)return`${(v/1e9).toFixed(2)} mrd kr`;if(v>=1e6)return`${(v/1e6).toFixed(2)} mill kr`;return`${Math.round(v).toLocaleString('nb-NO')} kr`;}
+// Chat delays go through later() so ↺ Nullstill can cancel messages still on their way
+const pendingTimers=new Set();
+function later(fn,ms){let id;id=setTimeout(()=>{pendingTimers.delete(id);fn();},ms);pendingTimers.add(id);return id;}
+function cancelPending(){pendingTimers.forEach(clearTimeout);pendingTimers.clear();}
+
+// Norwegian decimal comma: 2,85 mill kr (toFixed alone would give 2.85)
+function fmt(v){if(v>=1e9)return`${(v/1e9).toFixed(2).replace('.',',')} mrd kr`;if(v>=1e6)return`${(v/1e6).toFixed(2).replace('.',',')} mill kr`;return`${Math.round(v).toLocaleString('nb-NO')} kr`;}
 
 // ══════════════════════════════════════
 // SCREEN NAVIGATION
@@ -613,6 +633,8 @@ function goScreen(name){
 // SESSION RESET
 // ══════════════════════════════════════
 function resetSession(){
+  // Stop chat messages still on their way from the previous session
+  cancelPending();
   // Reset shared state
   collectedState={
     lumpSum:0,monthly:0,horizon:15,
@@ -627,7 +649,7 @@ function resetSession(){
   document.getElementById('landingQuick').innerHTML='';
   const cw=document.getElementById('landingChartWrap');if(cw)cw.classList.add('hidden');
   if(landingChartInst){landingChartInst.destroy();landingChartInst=null;}
-  setTimeout(()=>initLanding(),100);
+  later(()=>initLanding(),100);
 
   // Reset advisory tool
   advMode=null;advStep=0;advLocked=false;advAskedDebtRate=false;
@@ -641,9 +663,39 @@ function resetSession(){
   document.getElementById('emptyState').classList.remove('hidden');
   document.getElementById('resultsContent').classList.add('hidden');
   if(typeof chartInst!=='undefined'&&chartInst){chartInst.destroy();chartInst=null;}
+  document.getElementById('riskBanner').className='hidden';
+  document.getElementById('recBoxContent').innerHTML='';
+  advPrefilled=false;
+  lastLandingRec=null;landingChartData=null;landingChartInfo=null;lastResults=null;mainChartData=null;
+  setChatInputMode('landing',false);setChatInputMode('adv',false);
+  resetManualForm();
 
   // Go to landing
   goScreen('landing');
+}
+// Manual form back to the values in the HTML (defaultValue) and the default pills
+function resetManualForm(){
+  document.querySelectorAll('#manualPane input').forEach(i=>{i.value=i.defaultValue;});
+  const pick=(gid,val)=>{const el=document.querySelector(`#${gid} .pill[data-val="${val}"]`);if(el)selectPill(el,gid);};
+  pick('suitGroup','none');pick('riskGroup','Offensiv');
+  selectedRisk='Offensiv';
+  for(const k in mcAnswers)delete mcAnswers[k];
+  document.querySelectorAll('.mc-opt.selected').forEach(o=>o.classList.remove('selected'));
+  document.getElementById('mcResult').textContent='';
+  document.getElementById('lesMerContent').classList.add('hidden');
+  const lm=document.querySelector('.lesMer');if(lm)lm.textContent='Les mer om hva profilene innebærer ▾';
+  toggleMCBlock(false);
+  updateSlider();updateSuit();
+}
+
+// Risk willingness and reaction to a fall are fixed levels in the allocation matrix,
+// so they are answered with the buttons only (amounts, buffer and horizon can be typed)
+const BUTTON_ONLY_LANDING=[4,5], BUTTON_ONLY_ADV=[6,7];
+function setChatInputMode(chat,buttonsOnly){
+  const inp=document.getElementById(chat==='landing'?'landingInput':'advInput');
+  const btn=document.getElementById(chat==='landing'?'landingSendBtn':'advSendBtn');
+  inp.disabled=buttonsOnly;btn.disabled=buttonsOnly;
+  inp.placeholder=buttonsOnly?'Velg et av alternativene over':chat==='landing'?'Eller skriv her…':'Skriv her…';
 }
 function openInfoDrawer(){
   document.getElementById('infoDrawer').classList.add('open');
@@ -767,7 +819,8 @@ function renderResults(params){
   const isBank=pAlloc===0;
   const profile=isBank?{name:"Bankkonto",stocks:0,bonds:0,color:"#7a9e7a"}:profForAlloc(pAlloc);
   const cf=isBank?0:pAlloc*costS+(1-pAlloc)*costB;  // no fund fees on a bank account
-  const data=MC[profile.name==="Bankkonto"?"Bankkonto":profile.name]||MC["Forsiktig"];
+  const paths=isBank?null:mcPathsFor(pAlloc);
+  const data=isBank?BANK_NET:paths;
   const sv=monthly*12;
   const p50=[],p5=[],p95=[],cash=[];
   for(let yr=0;yr<horizon;yr++){
@@ -776,7 +829,7 @@ function renderResults(params){
     const sc50 =startCapital*data.p50[yr]*cd;
     const sc5  =startCapital*data.p5[yr]*cd;
     const sc95 =startCapital*data.p95[yr]*cd;
-    const scCash=startCapital*MC.Bankkonto.p50[yr];
+    const scCash=startCapital*BANK_NET.p50[yr];
 
     // Progressive savings: savings invested in year k grow from year k to year yr.
     // Growth factor for savings invested in year k = data.p50[yr] / data.p50[k]
@@ -788,7 +841,7 @@ function renderResults(params){
       sav50 +=sv*(data.p50[yr]/data.p50[k])*kDrag;
       sav5  +=sv*(data.p5[yr] /data.p5[k] )*kDrag;
       sav95 +=sv*(data.p95[yr]/data.p95[k])*kDrag;
-      savCash+=sv*(MC.Bankkonto.p50[yr]/MC.Bankkonto.p50[k]);
+      savCash+=sv*(BANK_NET.p50[yr]/BANK_NET.p50[k]);
     }
     p50.push(sc50+sav50);
     p5.push(sc5+sav5);
@@ -852,7 +905,7 @@ function renderResults(params){
   }
 
   const result={p50:p50[horizon-1],p5:p5[horizon-1],p95:p95[horizon-1],profile,pAlloc,ar,cap};
-  lastResults={...result,isBank,
+  lastResults={...result,isBank,paths,
     params:{startCapital,monthly,horizon,income,expenses,bufferMonths,costS,costB,riskLabel},
     rec:recParts(engKey,bKey,bufNote,pct,expenses/12),
     introHTML:''};  // deliverAdvRec adds the chat intro
@@ -978,7 +1031,7 @@ function renderLandingChart(p){
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.parsed.y)}`}}},
       scales:{x:{ticks:{maxTicksLimit:8,font:{family:'DM Sans',size:10},color:'#7a7a9a'},grid:{color:'#f0ece3'}},
               y:{ticks:{font:{family:'DM Sans',size:10},color:'#7a7a9a',callback:v=>fmt(v)},grid:{color:'#f0ece3'}}}}});
-  setTimeout(()=>wrap.scrollIntoView({behavior:'smooth',block:'nearest'}),100);
+  later(()=>wrap.scrollIntoView({behavior:'smooth',block:'nearest'}),100);
 }
 
 // ══════════════════════════════════════
@@ -1164,6 +1217,7 @@ function landingAddBubble(html,role){
   return d;
 }
 function setLandingQuick(opts){
+  if((opts||[]).length)setChatInputMode('landing',BUTTON_ONLY_LANDING.includes(landingStep));
   const a=document.getElementById('landingQuick');a.innerHTML='';
   (opts||[]).forEach(label=>{
     const b=document.createElement('button');b.className='qbtn';b.textContent=label;
@@ -1174,7 +1228,7 @@ function setLandingQuick(opts){
 
 function initLanding(){
   landingStep=0;askedDebtRate=false;
-  setTimeout(()=>{
+  later(()=>{
     landingAddBubble(LANDING_QUESTIONS[0].ask,'ai');
     setLandingQuick(LANDING_QUESTIONS[0].quick);
   },300);
@@ -1184,6 +1238,7 @@ function landingSend(){
   if(landingLocked)return;
   const inp=document.getElementById('landingInput');
   const text=inp.value.trim();if(!text)return;
+  if(BUTTON_ONLY_LANDING.includes(landingStep)&&!LANDING_QUESTIONS[landingStep].quick.includes(text))return;
   inp.value='';setLandingQuick([]);
   landingAddBubble(text,'user');
   landingLocked=true;
@@ -1191,7 +1246,7 @@ function landingSend(){
   // ── AFTER RECOMMENDATION — never re-deliver; answer the follow-up buttons instead ──
   if(landingStep>=LANDING_QUESTIONS.length){
     const t=text.toLowerCase();
-    setTimeout(()=>{
+    later(()=>{
       if(/^ja\b|full analyse/.test(t)) triggerDeeper();
       else landingAddBubble('Supert! Du kan laste ned anbefalingen som PDF over, eller trykke <strong>↺ Nullstill</strong> øverst for å starte på nytt.','ai');
       landingLocked=false;
@@ -1203,18 +1258,18 @@ function landingSend(){
   if(landingStep===2&&askedDebtRate&&collectedState.hasDebt){
     const fi=interpretInput(text,'debtRate');
     if(fi.type==='clarify'){
-      setTimeout(()=>{landingAddBubble(fi.message,'ai');setLandingQuick(fi.quick||['Ca. 3%','Ca. 4%','Ca. 5%','Ca. 6%','Over 6%']);landingLocked=false;},400);
+      later(()=>{landingAddBubble(fi.message,'ai');setLandingQuick(fi.quick||['Ca. 3%','Ca. 4%','Ca. 5%','Ca. 6%','Over 6%']);landingLocked=false;},400);
       return;
     }
     if(fi.type==='fallback'){
       if(fi.field)collectedState[fi.field]=fi.value;
-      setTimeout(()=>landingAddBubble(fi.message,'ai'),400);
+      later(()=>landingAddBubble(fi.message,'ai'),400);
     }else{
       const tl=text.toLowerCase();const m=tl.match(/(\d[\d,.]*)/);
       if(m){const r=parseFloat(m[1].replace(',','.'));if(r>0&&r<50)collectedState.mortgageRate=r/100;}
     }
     landingStep++;
-    setTimeout(()=>{
+    later(()=>{
       if(landingStep<LANDING_QUESTIONS.length){landingAddBubble(LANDING_QUESTIONS[landingStep].ask,'ai');setLandingQuick(LANDING_QUESTIONS[landingStep].quick);}
       else deliverLandingRec();
       landingLocked=false;
@@ -1225,7 +1280,7 @@ function landingSend(){
   // ── INTERPRET INPUT ──
   const fi=interpretInput(text,landingStep);
   if(fi.type==='clarify'){
-    setTimeout(()=>{
+    later(()=>{
       landingAddBubble(fi.message,'ai');
       setLandingQuick(fi.quick||LANDING_QUESTIONS[landingStep].quick);
       landingLocked=false;
@@ -1235,7 +1290,7 @@ function landingSend(){
 
   if(fi.type==='fallback'){
     if(fi.field)collectedState[fi.field]=fi.value;
-    setTimeout(()=>landingAddBubble(fi.message,'ai'),400);
+    later(()=>landingAddBubble(fi.message,'ai'),400);
   }else{
     const q=LANDING_QUESTIONS[landingStep];
     if(q&&q.parse)q.parse(text);
@@ -1244,7 +1299,7 @@ function landingSend(){
   // ── DEBT FOLLOW-UP ──
   if(landingStep===2&&collectedState.hasDebt&&!askedDebtRate){
     askedDebtRate=true;
-    setTimeout(()=>{
+    later(()=>{
       landingAddBubble('<span class="ai-question">Omtrent hvilken rente betaler du på boliglånet?</span>','ai');
       setLandingQuick(['Ca. 3%','Ca. 4%','Ca. 5%','Ca. 6%','Over 6%']);
       landingLocked=false;
@@ -1253,7 +1308,7 @@ function landingSend(){
   }
 
   landingStep++;
-  setTimeout(()=>{
+  later(()=>{
     if(landingStep<LANDING_QUESTIONS.length){
       landingAddBubble(LANDING_QUESTIONS[landingStep].ask,'ai');
       setLandingQuick(LANDING_QUESTIONS[landingStep].quick);
@@ -1312,7 +1367,7 @@ function deliverLandingRec(){
   });
 
   // Show deeper analysis button
-  setTimeout(()=>{
+  later(()=>{
     const d=document.createElement('div');d.className='bubble ai';
     d.innerHTML=`Vil du se en fullstendig analyse med din eksakte porteføljeprofil og graf over tid?<br><br><button class="deeper-btn" onclick="triggerDeeper()">Se full analyse i KapitalKompasset →</button><button class="pdf-btn" onclick="downloadLandingPDF(this)">${PDF_LANDING_LABEL}</button>`;
     document.getElementById('landingMsgs').appendChild(d);
@@ -1452,28 +1507,7 @@ function interpretInput(text,step){
     return{type:'understood',silent:true};
   }
 
-  // ── RISK WILLINGNESS (landing step 4, adv step 6) ──
-  if(step===4){
-    if(/vet ikke|usikker|vanskelig å si|middels kanskje|vet ikke helt/.test(t))
-      return{type:'clarify',message:'Her er en enkel tommelfingerregel: Lav betyr at du helst vil unngå store svingninger. Høy betyr at du er komfortabel med at verdien kan variere mye — mot høyere forventet avkastning over tid. Hva passer deg best?'};
-    if(/redd|nervøs|bekymret|ikke glad i risiko/.test(t))
-      return{type:'clarify',message:'Det er helt forståelig 😊 Vil du si at du ønsker mest mulig stabilitet (Lav), eller er du OK med litt svingninger mot høyere vekst (Middels)?',quick:['Lav — stabilt og trygt','Middels — litt svingninger er ok']};
-    if(/\bmaks\b|alt inn|mest mulig|aggressiv\b|yolo/.test(t))
-      return{type:'fallback',message:'Notert — maksimal vekst 💪',field:'riskWillingness',value:'Høy'};
-    return{type:'understood',silent:true};
-  }
-
-  // ── RISK BEHAVIOUR (landing step 5, adv step 7) ──
-  if(step===5){
-    if(/vet ikke|vanskelig å si|antagelig holde|usikker/.test(t))
-      return{type:'clarify',message:'Tenk deg at du har investert 100 000 kr, og de plutselig er verdt 80 000 kr. Hva ville det første instinktet ditt vært — selge, vente, eller kanskje kjøpe mer?'};
-    if(/\bholde\b|\bbeholde\b|\bvente\b|ikke noe|ingenting|la det stå/.test(t))
-      return{type:'fallback',message:'Langsiktig tankegang — bra 👍',field:'riskComfort',value:'N'};
-    if(/selge alt|ta ut alt|panikk|ikke tåle det/.test(t))
-      return{type:'fallback',message:'Forstår — det noterer vi. Vi tar hensyn til det i anbefalingen.',field:'riskComfort',value:'C'};
-    return{type:'understood',silent:true};
-  }
-
+  // Risk willingness (4) and behaviour (5) are buttons only — parse() maps the labels
   return{type:'understood',silent:true};
 }
 
@@ -1563,9 +1597,12 @@ function advisoryPdfSpec(){
       ['Risikovilje',P.riskLabel],['Ved 20% fall','ikke spurt — antatt: holde på og vente'],
       ['Buffer',`${P.bufferMonths.toLocaleString('nb-NO')} måneders utgifter`],['Inntekt etter skatt',perYear(P.income)],['Utgifter',perYear(P.expenses)]];
   const basis=[['Anbefalt fordeling',`${pct}% aksjer · ${100-pct}% ${R.isBank?'bankinnskudd':'obligasjoner'}`],
-    ['Simuleringsprofil',R.isBank?'Bankkonto':`${R.profile.name} (${Math.round(R.profile.stocks*100)}% aksjer)`],
+    ['Simuleringsprofil',R.isBank?'Bankkonto':R.paths.w>0&&R.paths.w<1
+      ?`interpolert mellom ${R.paths.lo.name} (${Math.round(R.paths.lo.stocks*100)}% aksjer) og ${R.paths.hi.name} (${Math.round(R.paths.hi.stocks*100)}% aksjer)`
+      :`${(R.paths.w>=1?R.paths.hi:R.paths.lo).name} (${pct}% aksjer)`],
     ['Metode','Monte Carlo-simulering med 1 000 scenarioer'],
-    ['Årlige kostnader',R.isBank?'ingen (bankkonto)':`aksjefond ${pctText(P.costS,2)}, rentefond ${pctText(P.costB,2)}`]];
+    ['Årlige kostnader',R.isBank?'ingen (bankkonto)':`aksjefond ${pctText(P.costS,2)}, rentefond ${pctText(P.costB,2)}`],
+    ['Bankkonto','ca. 2,5% rente per år, vist etter 22% skatt på renter']];
   const values=[['Totalt innskutt',fmt(P.startCapital+P.monthly*12*P.horizon)],['Forventet verdi (median)',fmt(R.p50)],
     ['Pessimistisk (5%)',fmt(R.p5)],['Optimistisk (95%)',fmt(R.p95)]];
   return {filename:'kapitalkompasset-analyse.pdf',subtitle:'Din fullstendige analyse',blocks:[
@@ -1575,7 +1612,7 @@ function advisoryPdfSpec(){
     {type:'h2',text:'Beregningsgrunnlag'},{type:'rows',rows:basis},
     {type:'h2',text:`Resultat etter ${P.horizon} år`},{type:'rows',rows:values},
     {type:'chart',title:`Simulert porteføljeutvikling over ${P.horizon} år`,data:mainChartData,legend:pdfLegend(mainChartData.datasets),
-      note:`Linjen viser forventet utvikling (median). Båndet viser utfallsrommet der 90% av scenarioene havner (5–95%). Kostnader er trukket fra.${R.isBank?'':' Stiplet linje: bankkonto til sammenligning.'}`},
+      note:`Linjen viser forventet utvikling (median). Båndet viser utfallsrommet der 90% av scenarioene havner (5–95%). Kostnader er trukket fra.${R.isBank?' Bankkontoen er vist etter 22% skatt på renter.':' Stiplet linje: bankkonto etter 22% skatt på renter, til sammenligning.'}`},
     {type:'small',text:htmlToText(FUND_DISCLAIMER_HTML)}]};
 }
 
@@ -1703,7 +1740,7 @@ function downloadLandingPDF(btn){downloadPdf(btn,landingPdfSpec,PDF_LANDING_LABE
 function downloadAdvisoryPDF(btn){downloadPdf(btn,advisoryPdfSpec,PDF_ADV_LABEL);}
 
 // Init landing
-setTimeout(()=>initLanding(),200);
+later(()=>initLanding(),200);
 
 // ══════════════════════════════════════
 // ADVISORY CHAT — ALIGNED WITH LANDING PAGE
@@ -1785,6 +1822,7 @@ function advAddBubble(html,role){
 function advShowTyping(){const d=advAddBubble('<div class="typing-dots"><span></span><span></span><span></span></div>','ai');d.id='aTyping';}
 function advRemoveTyping(){const t=document.getElementById('aTyping');if(t)t.remove();}
 function setAdvQuick(opts){
+  if((opts||[]).length)setChatInputMode('adv',BUTTON_ONLY_ADV.includes(advStep));
   const a=document.getElementById('advQuickRow');a.innerHTML='';
   (opts||[]).forEach(label=>{
     const b=document.createElement('button');b.className='adv-qbtn';b.textContent=label;
@@ -1828,7 +1866,7 @@ function initAdvChat(forceFull){
   advAskedDebtRate=advPrefilled;  // the rate was already asked on the landing page
   document.getElementById('advChatHistory').innerHTML='';
   document.getElementById('advQuickRow').innerHTML='';
-  setTimeout(()=>{
+  later(()=>{
     if(advPrefilled){
       advAddBubble(`Hei! 📊 Jeg har tatt med svarene dine fra forsiden, så du slipper å svare på dem igjen:${summariseLandingAnswers()}Da trenger jeg bare to ting til: erfaringen din, og inntekt og utgifter. Vil du endre noe over, trykk «${CHANGE_ANSWERS_LABEL}».`,'ai');
       advAddBubble(ADV_QUESTIONS[0].ask.split('<br><br>').pop(),'ai');
@@ -1844,13 +1882,14 @@ function advSend(){
   if(advLocked)return;
   const inp=document.getElementById('advInput');
   const text=inp.value.trim();if(!text)return;
+  if(BUTTON_ONLY_ADV.includes(advStep)&&!ADV_QUESTIONS[advStep].quick.includes(text))return;
   inp.value='';setAdvQuick([]);
   advAddBubble(text,'user');
   advLocked=true;
 
   // ── AFTER RECOMMENDATION — never re-deliver ──
   if(advStep>=ADV_QUESTIONS.length){
-    setTimeout(()=>{
+    later(()=>{
       advAddBubble('Analysen er ferdig — se grafen og anbefalingen i resultatpanelet. Bytt til <strong>Manuell</strong> for å justere tallene, eller trykk <strong>↺ Nullstill</strong> for å starte på nytt.','ai');
       advLocked=false;
     },400);
@@ -1859,7 +1898,7 @@ function advSend(){
 
   // ── CHANGE LANDING ANSWERS — restart with every question ──
   if(advPrefilled&&text===CHANGE_ANSWERS_LABEL){
-    setTimeout(()=>initAdvChat(true),300);
+    later(()=>initAdvChat(true),300);
     return;
   }
 
@@ -1867,19 +1906,19 @@ function advSend(){
   if(advAskedDebtRate&&collectedState.hasDebt&&advStep===3){
     const fi=interpretInput(text,'debtRate');
     if(fi.type==='clarify'){
-      setTimeout(()=>{advAddBubble(fi.message,'ai');setAdvQuick(fi.quick||['Ca. 3%','Ca. 4%','Ca. 5%','Ca. 6%','Over 6%']);advLocked=false;},400);
+      later(()=>{advAddBubble(fi.message,'ai');setAdvQuick(fi.quick||['Ca. 3%','Ca. 4%','Ca. 5%','Ca. 6%','Over 6%']);advLocked=false;},400);
       return;
     }
     if(fi.type==='fallback'){
       if(fi.field)collectedState[fi.field]=fi.value;
-      setTimeout(()=>advAddBubble(fi.message,'ai'),400);
+      later(()=>advAddBubble(fi.message,'ai'),400);
     }else{
       const tl=text.toLowerCase();const m=tl.match(/(\d[\d,.]*)/);
       if(m){const r=parseFloat(m[1].replace(',','.'));if(r>0&&r<50)collectedState.mortgageRate=r/100;}
     }
     advAskedDebtRate=false;
     advStep=4;
-    setTimeout(()=>{
+    later(()=>{
       advAddBubble(ADV_QUESTIONS[advStep].ask,'ai');
       setAdvQuick(ADV_QUESTIONS[advStep].quick);
       advLocked=false;
@@ -1894,7 +1933,7 @@ function advSend(){
   const fi=semanticStep!==undefined?interpretInput(text,semanticStep):{type:'understood',silent:true};
 
   if(fi.type==='clarify'){
-    setTimeout(()=>{
+    later(()=>{
       advAddBubble(fi.message,'ai');
       setAdvQuick(fi.quick||(ADV_QUESTIONS[advStep]&&ADV_QUESTIONS[advStep].quick)||[]);
       advLocked=false;
@@ -1904,7 +1943,7 @@ function advSend(){
 
   if(fi.type==='fallback'){
     if(fi.field)collectedState[fi.field]=fi.value;
-    setTimeout(()=>advAddBubble(fi.message,'ai'),400);
+    later(()=>advAddBubble(fi.message,'ai'),400);
   }else{
     const q=ADV_QUESTIONS[advStep];
     if(q&&q.parse)q.parse(text);
@@ -1915,11 +1954,11 @@ function advSend(){
   if(advPrefilled) while(ADV_PREFILLED_SKIP.includes(advStep)) advStep++;
   const extraDelay=fi.type==='fallback'?400:0;
 
-  setTimeout(()=>{
+  later(()=>{
     // After step 0 (suitability): show beginner info box if user is a nybegynner
     if(finishedStep===0&&collectedState.suitability==='beginner'){
       advAddBubble(`<div class="info-box-inline"><strong style="color:var(--teal);">📚 Godt å vite før du starter:</strong><ul><li><strong>Verdipapirer</strong> er aksjer og obligasjoner. En aksje kan gi høy avkastning — men også store tap. En obligasjon er tryggere, men gir lavere avkastning.</li><li><strong>Risiko</strong> betyr svingninger. Lang tidshorisont reduserer risikoen betraktelig.</li><li><strong>Kostnader</strong> trekkes automatisk fra avkastningen. 0,5% kan over 20 år utgjøre hundretusener i tapt verdi.</li></ul></div>`,'ai');
-      setTimeout(()=>{
+      later(()=>{
         advAddBubble(ADV_QUESTIONS[advStep].ask,'ai');
         setAdvQuick(ADV_QUESTIONS[advStep].quick);
         advLocked=false;
@@ -1984,7 +2023,7 @@ function deliverAdvRec(){
   });
   lastResults.introHTML=advIntroHTML;
   lastResults.source='ai';
-  setTimeout(()=>{
+  later(()=>{
     advAddBubble(`Vil du ta vare på analysen? Den inneholder anbefalingen, forutsetningene og grafen.<br><br><button class="pdf-btn" onclick="downloadAdvisoryPDF(this)">${PDF_ADV_LABEL}</button>`,'ai');
   },600);
 }

@@ -237,6 +237,8 @@ After step 5: `deliverLandingRec()` computes allocation, builds rec-box, renders
 
 **Debt follow-up logic:** If user answers "Ja, boliglån" at step 2 and `!askedDebtRate`, an extra rate question fires. `landingStep` stays at 2 during this. After the rate is answered, `landingStep` increments to 3 normally.
 
+**Buttons only for the matrix levels:** risk willingness and reaction to a 20% fall (landing steps 4–5, advisory steps 6–7, `BUTTON_ONLY_LANDING`/`BUTTON_ONLY_ADV`) map straight to matrix columns, so they are answered with the quick buttons only: `setChatInputMode()` disables the text field while such a question is open, and `landingSend`/`advSend` ignore anything that isn't one of the button labels. Amounts, buffer and horizon can still be typed.
+
 **Free-text interpretation:** before a step's `parse()` runs, `interpretInput(text, step)` classifies the answer as `understood` (let `parse()` handle it), `clarify` (ask a follow-up, stay on the step) or `fallback` (set `field`/`value` directly with a confirmation message). Steps use the landing numbering (0 amount, 1 buffer, 2 debt, 3 horizon, 4 risk, 5 behaviour, `'debtRate'`); `advSend()` maps advisory steps via `ADV_TO_SEMANTIC`. Numbers are read with `normaliseNumber()`, which understands "5 000", "50k", "1,5 mill", "2 tusen" and finds the first number anywhere in a sentence.
 
 ---
@@ -313,12 +315,12 @@ Internally:
 1. Runs `capacityFromInputs` to get `cap`
 2. Runs `applyCapacity(riskLabel, cap)` to get `ar` (the actual risk label after capacity cap)
 3. Looks up `ALLOC_TABLE[hBucket(horizon)][RISK_SCORE[ar]]`
-4. Finds nearest MC profile via `profForAlloc(pAlloc)`
+4. Gets the MC paths via `mcPathsFor(pAlloc)` (interpolated between the two nearest profiles; `profForAlloc` still names the badge), or `BANK_NET` for a 0% allocation
 5. Computes p5/p50/p95 paths with cost drag
 6. Renders Chart.js line chart into `#mainChart`
 7. If `showRecBox`: builds and injects `buildRecHTML(...)` into `#recBoxContent`
 
-**MC profiles used:** Forsiktig (0% stocks), Moderat (30%), Balansert (50%), Vekst (80%), Offensiv (100%), Bankkonto. These map via `profForAlloc()` which picks the nearest profile by stocks fraction. Any 0% allocation (numeric `0` or `"Bank"`) uses the Bankkonto profile instead: it is recommended as høyrentekonto, so the panel says "0% aksjer · 100% bankinnskudd", the second legend entry reads "Bankinnskudd", no fund fees are deducted, and the dashed Bankkonto comparison line and its legend (`#legendBank`) are hidden since they would overlap the main line.
+**MC profiles used:** Forsiktig (0% stocks), Moderat (30%), Balansert (50%), Vekst (80%), Offensiv (100%), Bankkonto. The allocation matrix uses 20/35/50/65/80/100%, so `mcPathsFor(s)` interpolates geometrically (on the growth factors) between the two nearest profiles — e.g. 65% sits between Balansert and Vekst instead of being charted as 50%. The PDF names this as "interpolert mellom …". `MC.Bankkonto` is before tax (~2.5%/yr); `BANK_NET` applies 22% tax on each year's interest, so the bank line and a bank allocation match the landing chart's after-tax bank rate. Any 0% allocation (numeric `0` or `"Bank"`) uses `BANK_NET`: it is recommended as høyrentekonto, so the panel says "0% aksjer · 100% bankinnskudd", the second legend entry reads "Bankinnskudd", no fund fees are deducted, and the dashed Bankkonto comparison line and its legend (`#legendBank`) are hidden since they would overlap the main line.
 
 ---
 
@@ -392,6 +394,8 @@ Sections in order:
 - Clears landing chat, destroys landing chart instance
 - Resets advisory mode chooser, clears chat history
 - Clears results panel to empty state, destroys MC chart instance
+- Cancels chat messages still on their way (`cancelPending()` — every chat delay uses `later()` instead of `setTimeout`, so use `later()` for new delayed chat output too)
+- Clears stored PDF state (`lastLandingRec`, `lastResults`, chart data) and resets the manual form to its HTML defaults, pills and risk questions (`resetManualForm()`)
 - Navigates to landing screen
 
 ---
@@ -447,6 +451,8 @@ Gotchas:
 ---
 
 ## Known Quirks & Gotchas
+
+**Amounts use `fmt()`** — Norwegian format: `30 000 kr` (non-breaking space), `2,85 mill kr`, `1,50 mrd kr`.
 
 **ENG products do not include the percentage prefix.** `buildRecHTML` prepends `${pAllocPct}% aksjer · ` automatically. If you add "80% aksjer · " to the product string you'll get a duplicate.
 
