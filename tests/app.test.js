@@ -354,3 +354,31 @@ test('opening the full analysis again keeps the finished advisory chat', () => {
   app.sayLanding('Ja, vis meg full analyse');
   assert.equal(recCount(app.advBubbles()), 1);
 });
+
+// ── Sikkerhet ──
+test('user input is shown as text, never parsed as HTML', () => {
+  const payload = '<img src=x onerror="alert(1)">';
+  const landing = loadApp();
+  landing.sayLanding(payload);
+  const lb = landing.landingBubbles().find(b => b.className === 'bubble user');
+  assert.equal(lb.textContent, payload);
+  assert.equal(lb.innerHTML, '');
+
+  const adv = loadApp();
+  adv.chooseMode('ai');
+  adv.sayAdv(payload);
+  const ab = adv.advBubbles().find(b => b.className === 'bubble user');
+  assert.equal(ab.textContent, payload);
+  assert.equal(ab.innerHTML, '');
+});
+
+test('every external script is pinned with an integrity hash', () => {
+  const html = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
+  const tags = html.match(/<script\s[^>]*src=[^>]*>/g) || [];
+  assert.ok(tags.length >= 3);
+  for (const tag of tags) {
+    assert.match(tag, /src="https:\/\/cdn\.jsdelivr\.net\/npm\/[^"@]+@\d+\.\d+\.\d+\//, tag); // exact version
+    assert.match(tag, /integrity="sha384-[A-Za-z0-9+/]{64}"/, tag);
+    assert.match(tag, /crossorigin="anonymous"/, tag);
+  }
+});

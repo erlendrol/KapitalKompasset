@@ -8,7 +8,7 @@ This document describes the full architecture, data structures, logic, and desig
 
 KapitalKompasset is a single-file Norwegian investment advisory web app. It helps users decide what to do with their savings — producing a concrete allocation recommendation (e.g. "100% aksjer") with product suggestions, a growth chart, and educational content.
 
-**Single file, no backend, no API calls.** All logic runs client-side in vanilla JS. The only external dependency is Chart.js from cdnjs.
+**Single file, no backend, no API calls.** All logic runs client-side in vanilla JS. External dependencies are Chart.js 4.4.1, html2canvas 1.4.1 and jsPDF 2.5.1 from jsDelivr, each pinned with a Subresource Integrity (`integrity`) hash, plus Google Fonts.
 
 **Two screens:**
 1. **Landing page** (`screenLanding`) — a quick 6-question chat flow that produces a recommendation in under a minute.
@@ -453,4 +453,6 @@ Mobile breakpoint at `max-width: 680px`: advisory body stacks vertically, left p
 - **`const MC = {...}`** — ~20kb of Monte Carlo simulation data. Do not modify. If you need to update it, replace the entire object.
 - **`const ENG = {...}`** — large inline JSON. Edit targeted keys with string replacement, don't rewrite the whole block.
 - **`ALLOC_TABLE`** — the core allocation matrix. Only change if the investment philosophy changes, and update this document if you do.
-- **Chart.js CDN** — currently `4.4.1` from cdnjs. Don't upgrade without testing all charts.
+- **CDN scripts** — Chart.js `4.4.1`, html2canvas `1.4.1`, jsPDF `2.5.1` from `cdn.jsdelivr.net/npm/`, with `integrity` + `crossorigin="anonymous"`. jsDelivr serves the npm files byte-for-byte, so a hash can be computed from the npm package: `npm pack <pkg>@<ver>`, then `openssl dgst -sha384 -binary <file> | base64`. A wrong hash makes the browser block the script (charts/PDF stop working), so never change a version or URL without updating the hash. Don't use cdnjs for these — it re-minifies some files (e.g. `chart.umd.min.js` doesn't exist in the npm package), so its hash can't be checked against npm. Don't upgrade Chart.js without testing all charts.
+
+**User text is never inserted as HTML.** `landingAddBubble`/`advAddBubble` use `textContent` for `'user'` bubbles; only app-generated AI bubbles go through `innerHTML`.

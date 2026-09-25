@@ -4,9 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KapitalKompasset</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- jsDelivr serves the npm files byte-for-byte, so the integrity hashes can be checked against
+     the npm packages (cdnjs re-minifies some files). Changing a version means a new hash:
+     openssl dgst -sha384 -binary <file from the npm package> | base64 -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -1115,9 +1118,10 @@ const LANDING_QUESTIONS = [
   }
 ];
 
+// AI bubbles are app-generated HTML; user bubbles are typed text and must never be parsed as HTML
 function landingAddBubble(html,role){
-  const processed=role==='ai'?formatAIReply(html):html;
-  const d=document.createElement('div');d.className=`bubble ${role}`;d.innerHTML=processed;
+  const d=document.createElement('div');d.className=`bubble ${role}`;
+  if(role==='ai')d.innerHTML=formatAIReply(html);else d.textContent=html;
   document.getElementById('landingMsgs').appendChild(d);
   document.querySelector('#screenLanding .landing-chat').scrollTop=99999;
   return d;
@@ -1597,9 +1601,10 @@ const ADV_QUESTIONS=[
   }
 ];
 
+// AI bubbles are app-generated HTML; user bubbles are typed text and must never be parsed as HTML
 function advAddBubble(html,role){
-  const processed=role==='ai'?formatAIReply(html):html;
-  const d=document.createElement('div');d.className=`bubble ${role}`;d.innerHTML=processed;
+  const d=document.createElement('div');d.className=`bubble ${role}`;
+  if(role==='ai')d.innerHTML=formatAIReply(html);else d.textContent=html;
   document.getElementById('advChatHistory').appendChild(d);
   document.getElementById('advChatHistory').scrollTop=99999;
   if(role==='ai') injectFundDisclaimer(d);
