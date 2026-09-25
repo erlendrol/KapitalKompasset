@@ -220,3 +220,14 @@ test('bank allocation is not charged fund fees', () => {
   const pricey = app.renderResults({ ...base, costB: 0.02 });
   assert.equal(cheap.p50, pricey.p50);
 });
+
+test('advisory chart hides the dashed Bankkonto line when the recommendation is bank', () => {
+  const app = loadApp();
+  app.renderResults({ horizon: 2, monthly: 5000, riskLabel: 'Lav' });
+  assert.deepEqual(datasetLabels(lastChart(app)), ['95%', 'Forventet', '5%']);
+  assert.ok(app.el('legendBank').classList.contains('hidden'));
+
+  app.renderResults({ horizon: 20, monthly: 5000, riskLabel: 'Middels' });
+  assert.deepEqual(datasetLabels(lastChart(app)), ['95%', 'Forventet', '5%', 'Bankkonto']);
+  assert.ok(!app.el('legendBank').classList.contains('hidden'));
+});

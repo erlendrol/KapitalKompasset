@@ -510,7 +510,7 @@ input[type=number]:focus{border-color:var(--teal);}
           <div class="chart-title">Simulert porteføljeutvikling — 1 000 scenarioer</div>
           <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
           <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:0.7rem;color:var(--ink-muted);">
-            <span>━ Forventet</span><span>▓ 90% bånd</span><span>╌ Bankkonto</span>
+            <span>━ Forventet</span><span>▓ 90% bånd</span><span id="legendBank">╌ Bankkonto</span>
           </div>
         </div>
         <div class="result-disclaimer" id="capNote"></div>
@@ -819,13 +819,15 @@ function renderResults(params){
   document.getElementById('optimVal').textContent=fmt(p95[horizon-1]);
   const capTexts=["Disponibel inntekt er svært begrenset. Bygg en buffer før du investerer.","Evnen til å tåle svingninger er lav. Den investerte kapitalen spiller en viktig rolle for din økonomi.","Evnen til å tåle svingninger er middels — et moderat tap vil ikke ramme deg hardt.","God evne til å tåle svingninger. Selv store markedsfall vil ikke ha markant innvirkning på din levestandard.","Høy evne til å tåle svingninger. Din finansielle situasjon er svært robust."];
   document.getElementById('capNote').textContent=capTexts[Math.min(cap.displayLevel,4)];
+  document.getElementById('legendBank').classList.toggle('hidden',isBank);
   if(chartInst)chartInst.destroy();
   const labels=Array.from({length:horizon},(_,i)=>`År ${i+1}`);
   chartInst=new Chart(document.getElementById('mainChart').getContext('2d'),{type:'line',data:{labels,datasets:[
     {data:p95,borderColor:'transparent',backgroundColor:'rgba(42,127,127,0.12)',fill:'+1',pointRadius:0,tension:0.4,label:'95%'},
     {data:p50,borderColor:profile.color,backgroundColor:'transparent',borderWidth:2.5,pointRadius:0,tension:0.4,fill:false,label:'Forventet'},
     {data:p5,borderColor:'transparent',backgroundColor:'rgba(42,127,127,0.12)',fill:'-1',pointRadius:0,tension:0.4,label:'5%'},
-    {data:cash,borderColor:'#aaa',borderDash:[5,4],backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0.4,fill:false,label:'Bankkonto'},
+    // Dashed bank comparison — skipped when the recommendation itself is bank (it would overlap the main line)
+    ...(isBank?[]:[{data:cash,borderColor:'#aaa',borderDash:[5,4],backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0.4,fill:false,label:'Bankkonto'}]),
   ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.parsed.y)}`}}},scales:{x:{ticks:{maxTicksLimit:10,font:{family:'DM Sans',size:11},color:'#7a7a9a'},grid:{color:'#f0ece3'}},y:{ticks:{font:{family:'DM Sans',size:11},color:'#7a7a9a',callback:v=>fmt(v)},grid:{color:'#f0ece3'}}}}});
 
   // Inject rec-box into results panel (for manual mode, or any caller that sets showRecBox)
