@@ -1,6 +1,6 @@
 # KapitalKompasset — Developer Context
 
-This document describes the full architecture, data structures, logic, and design philosophy of `investering_v25.html`. Read this before making any changes.
+This document describes the full architecture, data structures, logic, and design philosophy of `index.html`. Read this before making any changes.
 
 ---
 
@@ -19,8 +19,8 @@ KapitalKompasset is a single-file Norwegian investment advisory web app. It help
 ## File Structure
 
 ```
-investering_v25.html
-├── <head>              Google Fonts, Chart.js CDN
+index.html
+├── <head>              Google Fonts, Chart.js / html2canvas / jsPDF CDN
 ├── <style>             All CSS (~530 lines)
 ├── <body>
 │   ├── <header>        Nav bar (Hva skal jeg gjøre? | Dybdeanalyse | ↺ Nullstill)
@@ -77,7 +77,7 @@ const RISK_SCORE = { "Ingen":0, "Meget lav":1, "Lav":2, "Middels":3, "Offensiv":
 
 **Row selection** via `hBucket(years)`:
 ```javascript
-// <1yr→0, ≤3yr→1, ≤6yr→2, ≤10yr→3, ≤15yr→4, >15yr→5
+// <1yr→0, <3yr→1, <6yr→2, <10yr→3, <15yr→4, ≥15yr→5  (boundary years go to the higher row)
 ```
 
 **Column selection formula** (landing and advisory AI):
@@ -225,9 +225,15 @@ Output structure:
 | 4 | Risk willingness (Lav/Middels/Offensiv/Høy) | `collectedState.riskWillingness` |
 | 5 | Risk behaviour (sell all/some/hold/buy) | `collectedState.riskComfort` |
 
-After step 5: `deliverLandingRec()` computes allocation, builds rec-box, renders chart.
+After step 5: `deliverLandingRec()` computes allocation, builds rec-box, renders chart, and shows the "full analyse" / PDF buttons.
+
+**After the recommendation** (`landingStep >= LANDING_QUESTIONS.length`), `landingSend()` never re-delivers. "Ja…"/"full analyse" calls `triggerDeeper()`; anything else gets a short closing reply. `advSend()` has the same guard.
+
+**Horizon values:** the quick buttons map to a fixed year inside their row — Under 3 år→2, 3–6→5, 6–10→8, 10–15→13, Over 15→20 — so the chosen label always lands in the matching `ALLOC_TABLE` row. Typed answers ("20 år", "ca. 7", "18 måneder") are read as numbers and clamped to 1–40 years (the length of the MC data).
 
 **Debt follow-up logic:** If user answers "Ja, boliglån" at step 2 and `!askedDebtRate`, an extra rate question fires. `landingStep` stays at 2 during this. After the rate is answered, `landingStep` increments to 3 normally.
+
+**Free-text interpretation:** before a step's `parse()` runs, `interpretInput(text, step)` classifies the answer as `understood` (let `parse()` handle it), `clarify` (ask a follow-up, stay on the step) or `fallback` (set `field`/`value` directly with a confirmation message). Steps use the landing numbering (0 amount, 1 buffer, 2 debt, 3 horizon, 4 risk, 5 behaviour, `'debtRate'`); `advSend()` maps advisory steps via `ADV_TO_SEMANTIC`. Numbers are read with `normaliseNumber()`, which understands "5 000", "50k", "1,5 mill", "2 tusen" and finds the first number anywhere in a sentence.
 
 ---
 
@@ -411,11 +417,17 @@ Mobile breakpoint at `max-width: 680px`: advisory body stacks vertically, left p
 
 ---
 
+## Tests
+
+`npm test` (or `node --test tests/*.test.js`) — no dependencies. `tests/load-app.js` runs the inline `<script>` from `index.html` in Node with a minimal fake DOM and synchronous timers, so parsers and whole chat flows can be tested. Add a case there whenever you change a parser or `interpretInput`.
+
+---
+
 ## Known Quirks & Gotchas
 
 **ENG products do not include the percentage prefix.** `buildRecHTML` prepends `${pAllocPct}% aksjer · ` automatically. If you add "80% aksjer · " to the product string you'll get a duplicate.
 
-**15yr exactly → row 4, not row 5.** `hBucket(15) = 4` (10–15yr). At 15yr, Offensiv = 80%. Only `horizon > 15` gives Offensiv = 100%. The manual form slider defaults to 20yr to avoid confusion.
+**15yr exactly → row 5.** `hBucket` promotes boundary years to the higher row, so `hBucket(15) = 5` and Offensiv = 100% from 15 years. The "10–15 år" quick button maps to 13 years (row 4) so it stays in its own row.
 
 **LANDING_QUESTIONS[n] parsers are shared** with ADV_QUESTIONS where possible. If you change a landing question's parser, check whether it's also referenced by `LANDING_QUESTIONS[n].parse(txt)` in ADV_QUESTIONS.
 
