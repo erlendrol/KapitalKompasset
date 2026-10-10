@@ -8,7 +8,7 @@ This document describes the full architecture, data structures, logic, and desig
 
 KapitalKompasset is a single-file Norwegian investment advisory web app. It helps users decide what to do with their savings — producing a concrete allocation recommendation (e.g. "100% aksjer") with product suggestions, a growth chart, and educational content.
 
-**Single file, no backend, no API calls.** All logic runs client-side in vanilla JS. External dependencies are Chart.js 4.4.1 and jsPDF 2.5.1 from jsDelivr, each pinned with a Subresource Integrity (`integrity`) hash, plus Google Fonts.
+**One HTML file, no backend, no API calls.** All logic runs client-side in vanilla JS. External dependencies are Chart.js 4.4.1 and jsPDF 2.5.1 from jsDelivr, each pinned with a Subresource Integrity (`integrity`) hash. Fonts (DM Sans 400/500/600, DM Serif Display 400) are served from `fonts/` (Fontsource npm packages, SIL OFL), not Google Fonts, so no visitor data goes to third parties other than jsDelivr. Publishing and security headers: see `README.md` and `_headers`.
 
 **Two screens:**
 1. **Landing page** (`screenLanding`) — a quick 6-question chat flow that produces a recommendation in under a minute.
@@ -20,7 +20,8 @@ KapitalKompasset is a single-file Norwegian investment advisory web app. It help
 
 ```
 index.html
-├── <head>              Google Fonts, Chart.js / jsPDF CDN
+├── <head>              Chart.js / jsPDF CDN (SRI)
+├── <style>             @font-face for fonts/*.woff2, then all CSS
 ├── <style>             All CSS (~530 lines)
 ├── <body>
 │   ├── <header>        Nav bar (Hva skal jeg gjøre? | Dybdeanalyse | ↺ Nullstill)
@@ -444,9 +445,17 @@ Gotchas:
 
 ---
 
+## Publishing
+
+Static site on Cloudflare Pages (no build step, output directory `/`); steps in `README.md`. `_headers` sets a Content-Security-Policy: scripts only from the site and `cdn.jsdelivr.net` (`'unsafe-inline'` is needed for the inline script and `onclick` attributes), fonts/styles/images only from the site, `connect-src 'none'`, no framing. **Anything new from another domain (a library, analytics, a font) must be added to `_headers` or the browser blocks it** — a test checks that every external `<script>` host is allowed. GitHub Pages ignores `_headers`.
+
+Adding a font weight: copy the `latin` woff2 for that weight from the `@fontsource/<family>` npm package into `fonts/` and add an `@font-face` rule at the top of `<style>`; a test checks that every `@font-face` file exists.
+
+---
+
 ## Tests
 
-`npm test` (or `node --test tests/*.test.js`) — no dependencies. `tests/load-app.js` runs the inline `<script>` from `index.html` in Node with a minimal fake DOM and synchronous timers, so parsers and whole chat flows can be tested. Add a case there whenever you change a parser or `interpretInput`.
+`npm test` (or `node --test tests/*.test.js`) — no dependencies; GitHub Actions (`.github/workflows/test.yml`) runs it on every push and pull request. `tests/load-app.js` runs the inline `<script>` from `index.html` in Node with a minimal fake DOM and synchronous timers, so parsers and whole chat flows can be tested. Add a case there whenever you change a parser or `interpretInput`.
 
 ---
 

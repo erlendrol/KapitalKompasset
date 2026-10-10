@@ -1,0 +1,13 @@
+# Security headers for Cloudflare Pages (also read by Netlify; GitHub Pages ignores this file).
+#
+# Content-Security-Policy:
+# - Scripts only from this site and jsDelivr (Chart.js, jsPDF — pinned with integrity hashes in index.html).
+#   'unsafe-inline' is needed because the app is one HTML file with an inline <script> and onclick attributes.
+# - Fonts, styles and images only from this site (data:/blob: for the chart image in the PDF).
+# - No network calls, forms, plugins or framing: the app sends nothing anywhere.
+# If you add a script, font or service from another domain, add it here or the browser will block it.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()

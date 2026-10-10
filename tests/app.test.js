@@ -568,3 +568,31 @@ test('bank in the full analysis is shown after 22% tax, like the landing chart',
   // ~2.5% before tax → ~1.9% after tax per year (untaxed data gave ~104 900)
   assert.ok(r.p50 > 103500 && r.p50 < 104100, String(r.p50));
 });
+
+// ── Publisering: fonter og sikkerhetsregler ──
+const repoFile = f => require('path').join(__dirname, '..', f);
+const readRepo = f => require('fs').readFileSync(repoFile(f), 'utf8');
+
+test('fonts are served from the site, not Google Fonts', () => {
+  const html = readRepo('index.html');
+  assert.doesNotMatch(html, /fonts\.googleapis|fonts\.gstatic/);
+  assert.doesNotMatch(html, /<link[^>]+rel="stylesheet"[^>]+https?:/, 'no external stylesheets');
+  const urls = [...html.matchAll(/@font-face\{[^}]*src:url\(([^)]+)\)/g)].map(m => m[1]);
+  assert.ok(urls.length >= 4);
+  for (const u of urls) assert.ok(require('fs').existsSync(repoFile(u)), `missing font file ${u}`);
+  for (const lic of ['fonts/OFL-DM-Sans.txt', 'fonts/OFL-DM-Serif-Display.txt']) {
+    assert.match(readRepo(lic), /SIL OPEN FONT LICENSE/i, lic);
+  }
+});
+
+test('the CSP in _headers allows exactly what the page loads', () => {
+  const csp = readRepo('_headers').match(/^[ \t]+Content-Security-Policy:[ \t]*(.+)$/m)[1];  // the header line, not the comment
+  const directive = name => (csp.match(new RegExp(`(?:^|;)\\s*${name} ([^;]+)`)) || [])[1] || '';
+  const scriptSrc = directive('script-src');
+  const hosts = [...readRepo('index.html').matchAll(/<script\s[^>]*src="(https:\/\/[^/"]+)/g)].map(m => m[1]);
+  for (const h of new Set(hosts)) assert.ok(scriptSrc.includes(h), `script-src must allow ${h}`);
+  assert.equal(directive('font-src').trim(), "'self'");
+  assert.equal(directive('connect-src').trim(), "'none'");
+  assert.equal(directive('frame-ancestors').trim(), "'none'");
+  assert.equal(directive('object-src').trim(), "'none'");
+});
